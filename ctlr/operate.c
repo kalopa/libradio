@@ -39,7 +39,7 @@
 
 #include <libavr.h>
 
-#include "train_net.h"
+#include "libradio.h"
 
 #define NPRIORITIES				25
 

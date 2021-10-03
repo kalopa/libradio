@@ -51,12 +51,21 @@ main()
  	/*
 	 * Do the device initialization first...
 	 */
-	common_init();
+	set_state(SYSTEM_STATE_ERROR);
+	clockinit();
+	serialinit();
+	spiinit();
+	(void )fdevopen(sio_putc, sio_getc);
+	sei();
+	eeprominit();
+	/*
+	 * Now do the soft init...
+	 */
 	putchar('\n');
 	putchar('\n');
 	opinit();
 	radioinit();
-	report(COMMAND_FIRMWARE);
+	report(RADIO_CMD_FIRMWARE);
 	set_state(SYSTEM_STATE_REBOOT);
 	radio_power_up();
 	while (1) {
@@ -79,17 +88,17 @@ uchar_t
 execute(struct packet *pp)
 {
 	switch (pp->cmd) {
-	case COMMAND_FIRMWARE:
-	case COMMAND_STATUS:
+	case RADIO_CMD_FIRMWARE:
+	case RADIO_CMD_STATUS:
 		report(pp->cmd);
 		break;
 
-	case COMMAND_MASTER_ACTIVATE:
+	case RADIO_CMD_MASTER_ACTIVATE:
 		radio.my_node_id = pp->node;
 		set_state(SYSTEM_STATE_ACTIVE);
 		break;
 
-	case COMMAND_DEACTIVATE:
+	case RADIO_CMD_DEACTIVATE:
 		/*
 		 * Go to SHUTDOWN mode. This involves flushing the transmit queues
 		 * and then shutting down the radio. After that, the system goes
@@ -98,14 +107,14 @@ execute(struct packet *pp)
 		set_state(SYSTEM_STATE_SHUTDOWN);
 		break;
 
-	case COMMAND_SET_TIME:
+	case RADIO_CMD_SET_TIME:
 		if (pp->len != 3)
 			return(0);
 		ticks = (pp->data[1] << 8 | pp->data[0]);
 		tens_of_minutes = pp->data[2];
 		break;
 
-	case COMMAND_SET_DATE:
+	case RADIO_CMD_SET_DATE:
 		if (pp->len != 2)
 			return(0);
 		date = (pp->data[1] << 8 | pp->data[0]);
@@ -124,7 +133,7 @@ void
 report(uchar_t rtype)
 {
 	printf("<A%d:%d:", radio.my_node_id, rtype);
-	if (rtype == COMMAND_FIRMWARE) {
+	if (rtype == RADIO_CMD_FIRMWARE) {
 		printf("%d,%d,%d.\n", NODE_TYPE, FW_VERSION_H, FW_VERSION_L);
 	} else {
 		printf("%d,%u,%u,%u,%u.\n", system_state, ticks, tens_of_minutes,
