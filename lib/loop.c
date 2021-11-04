@@ -51,13 +51,15 @@ libradio_loop(struct libradio *rp)
 	 * Handle the state dispensation, so we know what to do next.
 	 */
 	switch (rp->state) {
-	case LIBRADIO_STATE_REBOOT:
-	case LIBRADIO_STATE_LOWBATT:
 	case LIBRADIO_STATE_SLEEP:
 	case LIBRADIO_STATE_SHUTDOWN:
-	case LIBRADIO_STATE_ERROR:
 	default:
 		handle_packet(rp);
+		break;
+
+	case LIBRADIO_STATE_REBOOT:
+	case LIBRADIO_STATE_LOWBATT:
+	case LIBRADIO_STATE_ERROR:
 		break;
 	}
 }
@@ -75,8 +77,10 @@ handle_packet(struct libradio *rp)
 	/*
 	 * Look for a received packet.
 	 */
+	puts("Go to receive...\n");
 	if (libradio_recv(rp, chp, rp->my_channel)) {
 		printf("\nPacket RX! (tick:%u),len:%d\n", rp->ms_ticks, chp->offset);
+#if 0
 		for (i = 0; i < chp->offset;) {
 			pp = (struct packet *)&chp->payload[i];
 			printf("N%d,L%d,C%d\n", pp->node, pp->len, pp->cmd);
@@ -86,5 +90,6 @@ handle_packet(struct libradio *rp)
 				libradio_command(rp, pp);
 			i += pp->len;
 		}
+#endif
 	}
 }

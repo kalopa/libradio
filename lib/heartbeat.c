@@ -38,7 +38,7 @@
 
 uint_t	songs[NLIBRADIO_STATES] = {0xfff, 0, 0, 0xf, 0x5555, 0xf7};
 
-volatile uint_t		hbeat;
+volatile uint_t		hbeat = 0;
 
 /*
  * This function is called to set the heartbeat LED appropriately.

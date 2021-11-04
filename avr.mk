@@ -52,7 +52,6 @@ STDPROM=$(AVR)/stdprom.x
 DEVICE?=atmega328p
 PROG?=usbtiny
 OBJS?=$(ASRCS:.S=.o) $(CSRCS:.c=.o)
-REGVALS=$(AVR)/$(DEVICE).inc
 
 AR=$(BINDIR)/avr-ar
 AS=$(BINDIR)/avr-as
@@ -66,6 +65,7 @@ OBJDUMP=$(BINDIR)/avr-objdump
 RANLIB=$(BINDIR)/avr-ranlib
 STRIP=$(BINDIR)/avr-strip
 
+LIBRADIO=../lib/libradio.a
 FIRMWARE?=firmware.hex
 
 # https://eleccelerator.com/fusecalc/fusecalc.php
@@ -85,7 +85,7 @@ all:	$(BIN)
 clean:
 	rm -f $(BIN) $(OBJS) $(FIRMWARE) $(EXTRA_CLEAN) *.lst srclist.ps srclist.pdf errs
 
-program:
+program: $(FIRMWARE)
 	sudo avrdude -p $(DEVICE) -c $(PROG) -U flash:w:$(FIRMWARE):i
 	rm $(FIRMWARE)
 
@@ -111,8 +111,6 @@ srclist.ps: $(CSRCS) $(ASRCS)
 
 srclist.pdf: srclist.ps
 	ps2pdf srclist.ps srclist.pdf
-
-$(OBJS): $(REGVALS)
 
 %.o:	%.S
 	$(CC) -E -mmcu=$(DEVICE) $< > temp.s

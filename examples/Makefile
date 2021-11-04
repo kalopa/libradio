@@ -36,13 +36,13 @@ CSRCS=	main.c
 BIN=	oiltank
 
 # https://eleccelerator.com/fusecalc/fusecalc.php
-LFUSE=0xdf
-HFUSE=0xd9
+LFUSE=0xef
+HFUSE=0xdf
 EFUSE=0xff
 
 include ../avr.mk
 
-$(BIN):	$(OBJS)
-		$(CC) -o $(BIN) $(LDFLAGS) ../../libavr/reset.o $(OBJS) $(LIBS)
+$(BIN):	$(OBJS) $(LIBRADIO)
+		$(CC) -o $(BIN) $(LDFLAGS) $(OBJS) $(LIBS)
 
 $(OBJS): ../libradio.h

@@ -40,8 +40,8 @@
 DEVICE=	atmega328p
 
 ASRCS=	setss.S
-CSRCS=	init.c loop.c radio.c spi.c command.c heartbeat.c
-LIB=	libradio.a
+CSRCS=	init.c loop.c send.c recv.c power.c radio.c spi.c command.c \
+	heartbeat.c
 
 # https://eleccelerator.com/fusecalc/fusecalc.php
 LFUSE=0xdf
@@ -50,14 +50,14 @@ EFUSE=0xff
 
 include ../avr.mk
 
-all:	$(LIB)
+all:	$(LIBRADIO)
 
-install: $(LIB)
+install: $(LIBRADIO)
 
 clean:
-	rm -f $(LIB) $(OBJS) errs
+	rm -f $(LIBRADIO) $(OBJS) errs
 
-$(LIB):	$(OBJS)
-	$(AR) cru $(LIB) $?
+$(LIBRADIO):	$(OBJS)
+	$(AR) cru $(LIBRADIO) $?
 
 $(OBJS):	../libradio.h

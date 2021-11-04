@@ -88,7 +88,7 @@ extern uchar_t			spi_data[MAX_SPI_BLOCK];
  *
  */
 void	spiinit();
-uchar_t	spi_byte(uchar_t);
+int		spi_byte(uchar_t);
 uchar_t	spi_send(uchar_t, uchar_t);
 void	spi_rxpacket(struct libradio *, struct channel *chp);
 void	spi_txpacket(struct libradio *, struct channel *);

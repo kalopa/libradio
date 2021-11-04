@@ -236,7 +236,7 @@ process_input()
 		break;
 
 	case STATE(IO_STATE_WAITCHAN, 'R'):
-		_reset();
+		//_reset();
 		break;
 
 	case STATE(IO_STATE_WAITNODE, '0'):

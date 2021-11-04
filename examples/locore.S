@@ -40,7 +40,7 @@
 ; NOTE: The sio_in and sio_out interrupt service routines are in the
 ; Kalopa libavr library.
 ;
-.include "atmega328p.inc"
+#include <avr/io.h>
 ;
 ; Interrupt Vector table.
 	.arch   atmega328p
@@ -81,13 +81,13 @@ empty:
 ; Handle a clock tick.
 clock_irq:
 	push	r24					; Save the status register
-	in		r24,SREG
+	in		r24,_SFR_IO_ADDR(SREG)
 	push	r24
 	push	r25					; Save the working regs
 ;
-	push	r18
+	push	r18					; Save the temporary regs
 	push	r19
-	push	r26					; Save the temporary regs
+	push	r26
 	push	r27					; Save the temporary regs
 	rcall	clocktick			; Call the main clock tick
 	pop		r27					; Restore the registers
@@ -98,7 +98,7 @@ clock_irq:
 irq_done:
 	pop		r25					; Restore the status register
 	pop		r24
-	out		SREG,r24
+	out		_SFR_IO_ADDR(SREG),r24
 	pop		r24
 	reti						; Return from interrupt
 ;
@@ -121,17 +121,17 @@ spi_irq:
 _ioinit:
 	ldi		r16,0xee			; DDRB=OOOI OOOI
 	ldi		r17,0x02			; PORTB=0000 0010
-	out		PORTB,r17
-	out		DDRB,r16
+	out		_SFR_IO_ADDR(PORTB),r17
+	out		_SFR_IO_ADDR(DDRB),r16
 
 	ldi		r16,0x37			; DDRC=IIOO IOOO
 	ldi		r17,0x00			; PORTC=0000 0000
-	out		PORTC,r17
-	out		DDRC,r16
+	out		_SFR_IO_ADDR(PORTC),r17
+	out		_SFR_IO_ADDR(DDRC),r16
 
 	ldi		r16,0xfa			; DDRD=OOOO OIOI
-	out		PORTD,r1			; PORTD=0000 0000
-	out		DDRD,r16
+	out		_SFR_IO_ADDR(PORTD),r1			; PORTD=0000 0000
+	out		_SFR_IO_ADDR(DDRD),r16
 	ret
 	.endfunc
 ;
@@ -142,11 +142,11 @@ _ioinit:
 	.func	_setled
 _setled:
 	tst		r24					; LED on or off?
-	breq	sl1
-	cbi		PORTD,3				; Turn on the LED
+	breq	1f
+	cbi		_SFR_IO_ADDR(PORTD),3				; Turn on the LED
 	ret
-sl1:
-	sbi		PORTD,3				; Turn off the LED
+1:
+	sbi		_SFR_IO_ADDR(PORTD),3				; Turn off the LED
 	ret
 	.endfunc
 ;

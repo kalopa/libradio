@@ -45,20 +45,30 @@
 #include "radio.h"
 
 /*
- * Our initial NodeID is zero, until we are activated. Also, while we are
- * waiting for activation, listen to the unactivated group.
+ * Transmit data via the radio transmitter. Note that if it is still powering
+ * up then we'll need to wait a bit. Likewise, if the radio is asleep, we
+ * will need to bring it back online. Only send the packet if we are in a
+ * READY state and the FIFO is empty.
  */
-void
-libradio_init(struct libradio *rp)
+uchar_t
+libradio_send(struct libradio *rp, struct channel *chp, uchar_t channo)
 {
-	libradio_set_song(rp->state = LIBRADIO_STATE_REBOOT);
-	rp->tens_of_minutes = 145;
-	rp->ms_ticks = rp->date = 0;
-	rp->npacket_rx = rp->npacket_tx = 0;
-	rp->my_channel = rp->my_node_id = rp->curr_channel = 0;
-	rp->curr_state = SI4463_STATE_SLEEP;
-	rp->rx_fifo = 0;
-	rp->tx_fifo = 0;
-	rp->radio_active = 0;
-	spiinit();
+	if (!rp->radio_active && libradio_power_up(rp) < 0)
+		return(0);
+	if (libradio_request_device_status(rp) != SI4463_STATE_READY)
+		return(0);
+	libradio_get_int_status(rp);
+	libradio_get_fifo_info(rp, 03);
+	if (rp->tx_fifo < SI4463_PACKET_LEN)
+		return(0);
+	spi_txpacket(rp, chp);
+	libradio_get_fifo_info(rp, 0);
+	printf("TX (off:%d) on chan%d\n", chp->offset, channo);
+	spi_data[0] = SI4463_START_TX;
+	spi_data[1] = channo;
+	spi_data[2] = (SI4463_STATE_READY << 4);
+	spi_data[3] = 0;
+	spi_data[4] = SI4463_PACKET_LEN;
+	spi_send(5, 0);
+	return(1);
 }

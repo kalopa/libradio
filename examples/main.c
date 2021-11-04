@@ -31,11 +31,12 @@
  */
 #include <stdio.h>
 #include <avr/io.h>
+#include <avr/eeprom.h>
 
 #include <libavr.h>
 #include "libradio.h"
 
-#define BAUDRATE	25			/* 38.4kbaud @ 16Mhz */
+#define BAUDRATE	25						/* 38.4kbaud @ 16Mhz */
 
 volatile char		hbticks;
 volatile uchar_t	main_thread;
@@ -66,6 +67,7 @@ main()
 	TCCR1B = (1<<WGM12)|(1<<CS11)|(1<<CS10);
  	TCCR1C = 0;
 	TIMSK1 = (1<<OCIE1A);
+	_setled(1);
 	/*
 	 * Set baud rate and configure the USART.
 	 */
@@ -74,35 +76,44 @@ main()
 	UCSR0C = (1<<UCSZ01)|(1<<UCSZ00);
 	(void )fdevopen(sio_putc, sio_getc);
 	sei();
+	printf("\nOil tank monitor v1.0. MCUSR:%x\n", MCUSR);
 	/*
 	 * Initialize the radio circuitry
 	 */
-	radio.unique_code1 = 0x7f;
-	radio.unique_code2 = 1;
+	radio.unique_code1 = eeprom_read_byte((const unsigned char *)0);
+	radio.unique_code2 = eeprom_read_byte((const unsigned char *)1);
+	if (radio.unique_code1 == 0xff && radio.unique_code2 == 0xff) {
+		radio.unique_code1 = 0x7f;
+		radio.unique_code2 = 0x01;
+		eeprom_write_byte((unsigned char *)0, radio.unique_code1);
+		eeprom_write_byte((unsigned char *)1, radio.unique_code2);
+	}
 	libradio_init(&radio);
 	/*
 	 * Begin the main loop - every clock tick, call the radio loop.
 	 */
 	bs_state = 0;
+	libradio_set_state(&radio, LIBRADIO_STATE_SLEEP);
 	while (1) {
 		/*
 		 * First off, halt the CPU until we've seen a clock tick.
 		 */
-		while (main_thread == 0)
-			;
+		while (main_thread < 20)
+			_sleep();
+		main_thread = 0;
+		putchar('.');
 		libradio_loop(&radio);
 		/*
 		 * Look for the command sequence ^E\ to enter bootstrap mode.
 		 */
 		if (!sio_iqueue_empty()) {
-			if ((ch = getchar()) == '\005') {
+			if ((ch = getchar()) == '\005')
 				bs_state = 1;
-				printf("^E");
-			} else {
-				if (bs_state == 1 && ch == '\\') {
-					putchar(ch);
+			else {
+				if (bs_state == 1 && ch == '\\')
 					_bootstrap();
-				}
+				else
+					putchar('?');
 				bs_state = 0;
 			}
 		}
@@ -121,25 +132,23 @@ operate(struct libradio *rp, struct packet *pp)
 }
 
 /*
- * This function is called every clock tick (every 100ms) or ten times
+ * This function is called every clock tick (every 10ms) or ten times
  * per second. Increment the millisecond clock, and if we've passed
  * the tens of minutes, then increment that. The ToM parks itself at
  * 145 which is an illegal value used at init, to let us know we don't
  * actually know what time it is. We also call the heartbeat to flash
- * the LED appropriately.
+ * the LED appropriately. This should really be called every 62.5ms.
+ * We use main_thread so the main loop doesn't run too quickly.
  */
 void
 clocktick()
 {
-	radio.ms_ticks += 10;
+	radio.ms_ticks += 100;
 	if (radio.ms_ticks >= 60000) {
 		radio.ms_ticks = 0;
 		if (radio.tens_of_minutes < 145)
 			radio.tens_of_minutes++;
 	}
-	if ((hbticks -= 4) <= 0) {
-		libradio_heartbeat();
-		hbticks += 25;
-	}
-	main_thread = 1;
+	libradio_heartbeat();
+	main_thread++;
 }

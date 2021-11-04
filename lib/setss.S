@@ -27,7 +27,7 @@
 ;
 ; ABSTRACT
 ;
-.include "atmega328p.inc"
+#include <avr/io.h>
 ;
 ; void _setss(uchar_t);
 ;
@@ -35,13 +35,12 @@
 	.global	_setss
 	.func	_setss
 _setss:
-	tst		r24					; SS pin on or off?
-	breq	ss1
-	cbi		PORTB,1				; Turn on the SS pin (active low)
+	tst		r24						; SS pin on or off?
+	breq	1f
+	cbi		_SFR_IO_ADDR(PORTB),1	; Turn on the SS pin (active low)
 	ret
-ss1:
-	sbi		PORTB,1				; Turn off the SS pin
-	nop							; Delay to allow the pin to go high
+1:	sbi		_SFR_IO_ADDR(PORTB),1	; Turn off the SS pin
+	nop								; Delay to allow the pin to go high
 	nop
 	nop
 	nop

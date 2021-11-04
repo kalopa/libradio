@@ -55,14 +55,19 @@ spiinit()
 }
 
 /*
- *
+ * Send and receive a byte over the SPI bus. Only wait about 20ms for the
+ * return (64,000 x 5 instructions at 16MHz).
  */
-uchar_t
+int
 spi_byte(uchar_t byte)
 {
+	unsigned int i;
+
 	SPDR = byte;
-	while ((SPSR & (1<<SPIF)) == 0)
+	for (i = 0; i < 64000 && (SPSR & (1<<SPIF)) == 0; i++)
 		;
+	if (i == 64000)
+		return(-1);
 	return(SPDR);
 }
 
@@ -72,21 +77,37 @@ spi_byte(uchar_t byte)
 uchar_t
 spi_send(uchar_t send_len, uchar_t recv_len)
 {
-	int i, j;
+	int i, j, k;
 
 	_setss(1);
-	for (i = 0; i < send_len; i++)
-		spi_byte(spi_data[i]);
+	for (i = 0; i < send_len; i++) {
+		if (spi_byte(spi_data[i]) == -1) {
+			_setss(0);
+			return(0);
+		}
+	}
 	_setss(0);
 	for (i = 0; i < MAX_COUNT; i++) {
 		/*
 		 * Start by sending a READ_CMD_BUFF command.
 		 */
 		_setss(1);
-		spi_byte(0x44);
-		if (spi_byte(0xff) == 0xff) {
-			for (j = 0; j < recv_len; j++)
-				spi_data[j] = spi_byte(0xff);
+		if (spi_byte(0x44) == -1) {
+			_setss(0);
+			return(0);
+		}
+		if ((k = spi_byte(0xff)) < 0) {
+			_setss(0);
+			return(0);
+		}
+		if (k == 0xff) {
+			for (j = 0; j < recv_len; j++) {
+				if ((k = spi_byte(0xff)) < 0) {
+					_setss(0);
+					return(0);
+				}
+				spi_data[j] = k;
+			}
 			_setss(0);
 			break;
 		}
