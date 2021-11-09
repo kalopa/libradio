@@ -89,6 +89,24 @@ to hear these time broadcasts, and exit hibernation.
 If they are not activated, thereafter they will remain in a WARM
 state and will check more frequently for activation messages.
 
+The onboard LED will flash in a certain sequence depending on what state
+the system is currently in.
+Using software to flash the LED on and off means that it is a sure
+indication that the software is actually doing something.
+What's more, the different sequences offer more information than just *ON*
+or *OFF*.
+
+| State | LED Sequence |
+| :---: | :---: |
+| LIBRADIO\_STATE\_STARTUP | Solid "ON" |
+| LIBRADIO\_STATE\_ERROR | Fast flashing on/off |
+| LIBRADIO\_STATE\_COLD | 1.6s flash every hour |
+| LIBRADIO\_STATE\_WARM | 3.2s flash every fifteen minutes |
+| LIBRADIO\_STATE\_LISTEN | On/off flashing sequence |
+| LIBRADIO\_STATE\_ACTIVE | "Heartbeat" sequence |
+
+For user-added states, the LED will just indicate an ACTIVE state.
+
 ## Radio Commands
 
 Commands are sent by a main controller to one or more clients.
@@ -371,7 +389,11 @@ move the client to a WARM or COLD state if no radio traffic
 is received, and both of those states will also stop
 the time of day clock.
 
-## Si4463 Details
+## Radio Details
+
+The Si4463 radio chip is a complex device.
+Aliexpress sells them as a simple board with some signal conditioning
+circuits and a crystal oscillator.
 
 - Chip Mask Revision: 11
 - Part: 4463
