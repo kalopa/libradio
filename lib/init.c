@@ -67,7 +67,7 @@ libradio_init(uchar_t c1, uchar_t c2, uchar_t n1, uchar_t n2)
 {
 	memset((void *)&radio, 0, sizeof(struct libradio));
 	libradio_set_state(LIBRADIO_STATE_STARTUP);
-	libradio_set_clock(10, 1280);
+	libradio_set_clock(1, 128);
 	radio.tens_of_minutes = 0xff;
 	radio.main_ticks = 50;		/* TEMP */
 	radio.curr_state = SI4463_STATE_SLEEP;
@@ -80,12 +80,12 @@ libradio_init(uchar_t c1, uchar_t c2, uchar_t n1, uchar_t n2)
 
 /*
  * Set the fast and slow clock parameters. Each argument defines the number
- * of absolute milliseconds of each clock interrupt in fast or slow mode. The
- * default is a 10ms clock interval when running normally and a 1s interval
- * in low power mode.
+ * of ticks (each tick is 10ms) of each clock interrupt in fast or slow mode.
+ * The default is a 10ms clock interval (or 100Hz) when running normally and
+ * a 1.28s interval in low power mode.
  */
 void
-libradio_set_clock(uint_t fast, uint_t slow)
+libradio_set_clock(uchar_t fast, uchar_t slow)
 {
 	radio.fast_period = fast;
 	radio.slow_period = slow;

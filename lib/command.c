@@ -52,16 +52,19 @@
 void
 libradio_command(struct packet *pp)
 {
+	printf("Received a command: %d (len:%d)\n", pp->cmd, pp->len);
 	switch (pp->cmd) {
-	printf("Received a command: %d\n", pp->cmd);
 	case RADIO_CMD_FIRMWARE:
 		break;
 
 	case RADIO_CMD_STATUS:
+		if (pp->len != 3)
+			break;
+		printf(">> Send status\n");
 		break;
 
 	case RADIO_CMD_ACTIVATE:
-		if (pp->len != 8)
+		if (pp->len != 6)
 			break;
 		printf(">> Activate! %d/%d/%d/%d\n", radio.cat1, radio.cat2, radio.num1, radio.num2);
 		if (pp->data[2] == radio.cat1 &&
@@ -76,28 +79,37 @@ libradio_command(struct packet *pp)
 		break;
 
 	case RADIO_CMD_DEACTIVATE:
-		printf(">> Deactivated...\n");
+		if (pp->len != 0)
+			break;
+		printf(">> Deactivate...\n");
+		radio.my_channel = radio.my_node_id = 0;
 		libradio_set_state(LIBRADIO_STATE_WARM);
 		break;
 
 	case RADIO_CMD_SET_TIME:
-		if (pp->len == 4)
-			radio.tens_of_minutes = pp->data[0];
-		printf(">> ToM:%u\n", radio.tens_of_minutes);
+		if (pp->len != 1)
+			break;
+		radio.tens_of_minutes = pp->data[0];
+		printf(">> Set Tens of Minutes:%u\n", radio.tens_of_minutes);
 		break;
 
 	case RADIO_CMD_SET_DATE:
-		if (pp->len == 5)
-			radio.date = (pp->data[1] << 8 | pp->data[0]);
-		printf(">> Date:%u\n", radio.date);
+		if (pp->len != 2)
+			break;
+		radio.date = (pp->data[1] << 8 | pp->data[0]);
+		printf(">> Set Date: %u\n", radio.date);
 		break;
 
 	case RADIO_CMD_READ_EEPROM:
-		printf("READ EEPROM\n");
+		if (pp->len != 5)
+			break;
+		printf(">> Read EEPROM...\n");
 		break;
 
 	case RADIO_CMD_WRITE_EEPROM:
-		printf("WRITE EEPROM\n");
+		if (pp->len < 4 || pp->len > 19)
+			break;
+		printf(">> Write EEPROM (%d bytes)...\n", pp->len - 3);
 		break;
 
 	default:

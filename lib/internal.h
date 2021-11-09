@@ -96,8 +96,8 @@ struct libradio {
 	uchar_t		state;
 	uchar_t		tens_of_minutes;
 	uint_t		ms_ticks;
-	uint_t		slow_period;
-	uint_t		fast_period;
+	uchar_t		slow_period;
+	uchar_t		fast_period;
 	uint_t		heart_beat;
 	uint_t		date;
 	uint_t		main_ticks;

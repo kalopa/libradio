@@ -36,7 +36,8 @@
  */
 
 #define MAX_RADIO_CHANNELS	6
-#define MAX_PAYLOAD			46
+#define MAX_FIFO_SIZE		46
+#define MAX_PACKET_SIZE		16
 
 /*
  * State machine used to manager radio operations. The states are
@@ -66,17 +67,17 @@
 
 /*
  * Packet to be transmitted. Multiple packets are folded up into one
- * payload (see the channel struct) and sent over the wire.
- * - node: ID for receiver (0 is a broadcast)
- * - len: Length of the entire packet (len(data + 3)).
- * - cmd: Command for the receiver.
- * - data: Zero or more bytes of command data.
+ * fifo load (see the channel struct) and sent over the wire. Note
+ * that the time stamp is encoded in front of the packet header and
+ * not part of this struct. On receive, the time stamp is stripped
+ * off first.
  */
 struct packet	{
-	uchar_t		node;
-	uchar_t		len;
-	uchar_t		cmd;
-	uchar_t		data[1];
+	uchar_t		node;		/* ID for receiver (0 is a broadcast) */
+	uchar_t		len;		/* Length of the data payload */
+	uchar_t		cmd;		/* Command for the receiver */
+	uchar_t		csum;		/* 8-bit checksum */
+	uchar_t		data[1];	/* Zero or more bytes of command data */
 };
 
 /*
@@ -86,7 +87,7 @@ struct packet	{
 struct channel	{
 	uchar_t		offset;
 	uchar_t		state;
-	uchar_t 	payload[MAX_PAYLOAD];
+	uchar_t 	payload[MAX_FIFO_SIZE];
 };
 
 #define LIBRADIO_CHSTATE_EMPTY			0
@@ -100,7 +101,7 @@ extern	volatile uchar_t	main_thread;
  */
 void	libradio_init(uchar_t, uchar_t, uchar_t, uchar_t);
 void	libradio_set_state(uchar_t);
-void	libradio_set_clock(uint_t, uint_t);
+void	libradio_set_clock(uchar_t, uchar_t);
 void	libradio_loop();
 
 uchar_t	libradio_recv(struct channel *, uchar_t);

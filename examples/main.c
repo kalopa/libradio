@@ -109,7 +109,7 @@ main()
 	}
 	printf("IDENT %d/%d\n", num1, num2);
 	libradio_init(OILTANK_CAT1, OILTANK_CAT2, num1, num2);
-	libradio_set_clock(100, 1600);
+	libradio_set_clock(10, 160);
 	/*
 	 * Begin the main loop - every clock tick, call the radio loop.
 	 */

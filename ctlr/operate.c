@@ -94,7 +94,7 @@ do_transmit()
 		i = (ticks / 1000) % MAX_CHANNELS;
 		chp = &channels[i];
 		if (chp->state != CHANNEL_STATE_ADDING &&
-								chp->offset < (MAX_PAYLOAD - 8))
+								chp->offset < (MAX_FIFO_SIZE - 8))
 			send_time(chp);
 	}
 	/*
@@ -222,7 +222,7 @@ process_input()
 		if (chp->state == CHANNEL_STATE_EMPTY)
 			chp->offset = 0;
 		else {
-			if (chp->offset + 3 >= MAX_PAYLOAD) {
+			if (chp->offset + 3 >= MAX_FIFO_SIZE) {
 				/*
 				 * Too much data for this channel. Abort!
 				 */
@@ -294,7 +294,7 @@ process_input()
 
 	case STATE(IO_STATE_WAITDATA, ','):
 	case STATE(IO_STATE_WAITDATA, '.'):
-		if ((chp->offset + pp->len) >= (MAX_PAYLOAD - 2)) {
+		if ((chp->offset + pp->len) >= (MAX_FIFO_SIZE - 2)) {
 			/*
 			 * Too much data for this channel. Abort! Note that we reserve
 			 * two bytes to specify node:0,len:0 at the end.
