@@ -5,6 +5,7 @@ radio communications system based on the Si4463 radio.
 The code is designed to work with the Kalopa Robotics microcontroller
 board which features an Atmel ATMega328P CPU and a Si4463 radio
 module.
+However, any Arduino and Si4463 combination will work.
 The Si4463 is quite a complicated radio and requires a lot of setup
 and hand-holding.
 But it is an amazing transceiver with a wide range of functions and
@@ -109,14 +110,14 @@ although this is not advised.
 Every command packet has a minimum of six bytes, followed
 by a data payload of up to 22 bytes.
 
-1. MSTicks (low byte)
-2. MSTicks (high byte)
+1. ms\_ticks (low byte)
+2. ms\_ticks (high byte)
 3. Destination node ID
 4. Packet length
 5. Command
 6. Checksum
 
-The MSTicks value represents the number of tens of milliseconds of
+The ms\_ticks value represents the number of tens of milliseconds of
 absolute date/time and is set by default by the transmit code
 and retrieved automatically by the receive code.
 If the time of day counter is running (see the **Time and Date**
