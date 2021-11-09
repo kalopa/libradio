@@ -97,7 +97,7 @@ What's more, the different sequences offer more information than just *ON*
 or *OFF*.
 
 | State | LED Sequence |
-| :---: | :---: |
+| --- | --- |
 | LIBRADIO\_STATE\_STARTUP | Solid "ON" |
 | LIBRADIO\_STATE\_ERROR | Fast flashing on/off |
 | LIBRADIO\_STATE\_COLD | 1.6s flash every hour |
@@ -389,7 +389,7 @@ move the client to a WARM or COLD state if no radio traffic
 is received, and both of those states will also stop
 the time of day clock.
 
-## Radio Details
+## Radio Details
 
 The Si4463 radio chip is a complex device.
 Aliexpress sells them as a simple board with some signal conditioning
