@@ -33,7 +33,7 @@
 #
 # ABSTRACT
 # Top-level Makefile. Just go down through the subdirectories and build
-# the binaries.
+# the binaries. Nothing much to see, here. Move along, please!
 #
 DIRS=	lib ctlr examples
 

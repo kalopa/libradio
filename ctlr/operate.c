@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights
- * reserved.
+ * Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +31,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * This is where it all kicks off. Have fun, baby!
+ * This is the operational code (and state machine) for the main
+ * controller.
  */
 #include <stdio.h>
 #include <avr/io.h>
@@ -119,7 +119,7 @@ do_transmit()
 	 */
 	chp->payload[chp->offset++] = 0;
 	chp->payload[chp->offset++] = 0;
-	if (radio_send(chp, channo) != 0)
+	if (libradio_send(chp, channo) != 0)
 		chp->state = CHANNEL_STATE_EMPTY;
 }
 
@@ -131,7 +131,9 @@ do_transmit()
 void
 enqueue()
 {
-	if (pp->cmd == COMMAND_MASTER_ACTIVATE || pp->node == radio.my_node_id) {
+	if (radio.)
+	if (pp->node == radio.my_node_id)
+		pp->cmd == COMMAND_MASTER_ACTIVATE || pp->node == radio.my_node_id) {
 		/*
 		 * This packet is for me. Don't queue it up for transmission.
 		 * Instead, execute the command. Also, free up the channel buffer

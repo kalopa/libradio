@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights
- * reserved.
+ * Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +31,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * This file contains the automatically generated configurations.
+ * This file contains the automatically generated configurations. Do
+ * not hand-edit.
  *
  * @n WDS GUI Version: 3.2.11.0
  * @n Device: Si4463 Rev.: B1                                 

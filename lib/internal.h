@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights
- * reserved.
+ * Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,6 +31,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
+ * This is the internal library for the libradio module. It isn't really
+ * designed to be included by the main application. It should be able
+ * to do what it needs, with the published functions. The internals of
+ * the library are defined here.
  */
 #define MAX_SPI_BLOCK				20
 
@@ -82,17 +85,66 @@
 #define SI4463_STATE_TX				7
 #define SI4463_STATE_RX				8
 
+/*
+ * Main status. Here is where the various status parameters exchanged with
+ * the Si4463 radio are saved.
+ */
+struct libradio {
+	/*
+	 * Overall state and time.
+	 */
+	uchar_t		state;
+	uchar_t		tens_of_minutes;
+	uint_t		ms_ticks;
+	uint_t		slow_period;
+	uint_t		fast_period;
+	uint_t		heart_beat;
+	uint_t		date;
+	uint_t		main_ticks;
+	uint_t		timeout;
+	uchar_t		main_thread;
+	/*
+	 * Node and channel identification.
+	 */
+	uchar_t		my_channel;
+	uchar_t		curr_channel;
+	uchar_t		my_node_id;
+	uchar_t		cat1, cat2;
+	uchar_t		num1, num2;
+	/*
+	 * Radio parameters.
+	 */
+	uint_t		npacket_rx;
+	uint_t		npacket_tx;
+	uchar_t		curr_state;
+	uchar_t		radio_active;
+	uchar_t		rx_fifo;
+	uchar_t		tx_fifo;
+	uchar_t		int_pending;
+	uchar_t		int_status;
+	uchar_t		ph_pending;
+	uchar_t		ph_status;
+	uchar_t		modem_pending;
+	uchar_t		modem_status;
+	uchar_t		chip_pending;
+	uchar_t		chip_status;
+	uchar_t		cmd_error;
+	uchar_t		saw_rx;
+};
+
 extern uchar_t			spi_data[MAX_SPI_BLOCK];
+extern struct libradio	radio;
 
 /*
  *
  */
-void	spiinit();
+void	spi_init();
 int		spi_byte(uchar_t);
 uchar_t	spi_send(uchar_t, uchar_t);
-void	spi_rxpacket(struct libradio *, struct channel *chp);
-void	spi_txpacket(struct libradio *, struct channel *);
+void	spi_rxpacket(struct channel *chp);
+void	spi_txpacket(struct channel *);
+void	libradio_set_song(uchar_t);
 
-void	libradio_command(struct libradio *, struct packet *);
+void	libradio_command(struct packet *);
 
 void	_setss(uchar_t);

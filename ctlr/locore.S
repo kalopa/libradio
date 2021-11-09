@@ -1,6 +1,5 @@
 ;
-; Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights
-; reserved.
+; Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights reserved.
 ;
 ; Redistribution and use in source and binary forms, with or without
 ; modification, are permitted provided that the following conditions
@@ -32,6 +31,8 @@
 ; THE POSSIBILITY OF SUCH DAMAGE.
 ;
 ; ABSTRACT
+; This AVR assembly code contains all the necessary startup code for the
+; main controller.
 ;
 .include "atmega328p.inc"
 ;

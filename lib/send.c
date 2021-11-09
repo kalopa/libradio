@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights
- * reserved.
+ * Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,8 +31,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * All radio communications happens here.
- * 434.00 to 434.80 MHz.
+ * This file holds the send() function which will actually send a packet
+ * (or packets) of data over the air.
  */
 #include <stdio.h>
 #include <avr/io.h>
@@ -42,7 +41,7 @@
 #include <libavr.h>
 
 #include "libradio.h"
-#include "radio.h"
+#include "internal.h"
 
 /*
  * Transmit data via the radio transmitter. Note that if it is still powering
@@ -51,18 +50,18 @@
  * READY state and the FIFO is empty.
  */
 uchar_t
-libradio_send(struct libradio *rp, struct channel *chp, uchar_t channo)
+libradio_send(struct channel *chp, uchar_t channo)
 {
-	if (!rp->radio_active && libradio_power_up(rp) < 0)
+	if (!radio.radio_active && libradio_power_up() < 0)
 		return(0);
-	if (libradio_request_device_status(rp) != SI4463_STATE_READY)
+	if (libradio_request_device_status() != SI4463_STATE_READY)
 		return(0);
-	libradio_get_int_status(rp);
-	libradio_get_fifo_info(rp, 03);
-	if (rp->tx_fifo < SI4463_PACKET_LEN)
+	libradio_get_int_status();
+	libradio_get_fifo_info(03);
+	if (radio.tx_fifo < SI4463_PACKET_LEN)
 		return(0);
-	spi_txpacket(rp, chp);
-	libradio_get_fifo_info(rp, 0);
+	spi_txpacket(chp);
+	libradio_get_fifo_info(0);
 	printf("TX (off:%d) on chan%d\n", chp->offset, channo);
 	spi_data[0] = SI4463_START_TX;
 	spi_data[1] = channo;

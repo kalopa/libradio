@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights
- * reserved.
+ * Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,8 +31,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * All radio communications happens here.
- * 434.00 to 434.80 MHz.
+ * A collection of utility functions for interfacing with the Si4463
+ * radio module. Some of these could probably be split into separate
+ * files so they're not pulled in by the linker unless actually needed.
  */
 #include <stdio.h>
 #include <avr/io.h>
@@ -42,19 +42,19 @@
 #include <libavr.h>
 
 #include "libradio.h"
-#include "radio.h"
+#include "internal.h"
 
 /*
  *
  */
 int
-libradio_request_device_status(struct libradio *rp)
+libradio_request_device_status()
 {
 	spi_data[0] = SI4463_REQUEST_DEVICE_STATE;
 	if (spi_send(1, 2) == 0)
 		return(-1);
-	rp->curr_state = spi_data[0];
-	rp->curr_channel = spi_data[1];
+	radio.curr_state = spi_data[0];
+	radio.curr_channel = spi_data[1];
 	return(spi_data[0]);
 }
 
@@ -62,7 +62,7 @@ libradio_request_device_status(struct libradio *rp)
  *
  */
 void
-libradio_get_property(struct libradio *rp, uint_t start_prop, uchar_t nprops)
+libradio_get_property(uint_t start_prop, uchar_t nprops)
 {
 	int i;
 
@@ -81,7 +81,7 @@ libradio_get_property(struct libradio *rp, uint_t start_prop, uchar_t nprops)
  *
  */
 void
-libradio_set_property(struct libradio *rp)
+libradio_set_property()
 {
 }
 
@@ -89,7 +89,7 @@ libradio_set_property(struct libradio *rp)
  *
  */
 void
-libradio_get_part_info(struct libradio *rp)
+libradio_get_part_info()
 {
 	printf(">>> Get Part Info...\n");
 	spi_data[0] = SI4463_PART_INFO;
@@ -107,7 +107,7 @@ libradio_get_part_info(struct libradio *rp)
  *
  */
 void
-libradio_get_func_info(struct libradio *rp)
+libradio_get_func_info()
 {
 	printf(">> Get func info...\n");
 	spi_data[0] = SI4463_FUNC_INFO;
@@ -124,7 +124,7 @@ libradio_get_func_info(struct libradio *rp)
  *
  */
 void
-libradio_get_packet_info(struct libradio *rp)
+libradio_get_packet_info()
 {
 }
 
@@ -132,7 +132,7 @@ libradio_get_packet_info(struct libradio *rp)
  *
  */
 void
-libradio_ircal(struct libradio *rp)
+libradio_ircal()
 {
 }
 
@@ -140,7 +140,7 @@ libradio_ircal(struct libradio *rp)
  *
  */
 void
-libradio_protocol_cfg(struct libradio *rp)
+libradio_protocol_cfg()
 {
 }
 
@@ -148,49 +148,49 @@ libradio_protocol_cfg(struct libradio *rp)
  *
  */
 void
-libradio_get_ph_status(struct libradio *rp)
+libradio_get_ph_status()
 {
 	spi_data[0] = SI4463_GET_PH_STATUS;
 	spi_data[1] = 0xff;
 	if (spi_send(2, 2) == 0)
 		return;
-	rp->ph_pending = spi_data[0];
-	rp->ph_status = spi_data[1];
+	radio.ph_pending = spi_data[0];
+	radio.ph_status = spi_data[1];
 }
 
 /*
  *
  */
 void
-libradio_get_modem_status(struct libradio *rp)
+libradio_get_modem_status()
 {
 	spi_data[0] = SI4463_GET_MODEM_STATUS;
 	if (spi_send(1, 6) == 0)
 		return;
-	rp->modem_pending = spi_data[0];
-	rp->modem_status = spi_data[1];
+	radio.modem_pending = spi_data[0];
+	radio.modem_status = spi_data[1];
 }
 
 /*
  *
  */
 void
-libradio_get_chip_status(struct libradio *rp)
+libradio_get_chip_status()
 {
 	spi_data[0] = SI4463_GET_CHIP_STATUS;
 	spi_data[1] = 0x7f;
 	if (spi_send(2, 3) == 0)
 		return;
-	rp->chip_pending = spi_data[0];
-	rp->chip_status = spi_data[1];
-	rp->cmd_error = spi_data[2];
+	radio.chip_pending = spi_data[0];
+	radio.chip_status = spi_data[1];
+	radio.cmd_error = spi_data[2];
 }
 
 /*
  *
  */
 void
-libradio_change_radio_state(struct libradio *rp, uchar_t new_state)
+libradio_change_radio_state(uchar_t new_state)
 {
 	printf(">>> Change state to %d...\n", new_state);
 	spi_data[0] = SI4463_CHANGE_STATE;
@@ -202,21 +202,21 @@ libradio_change_radio_state(struct libradio *rp, uchar_t new_state)
  *
  */
 void
-libradio_get_fifo_info(struct libradio *rp, uchar_t clrf)
+libradio_get_fifo_info(uchar_t clrf)
 {
 	spi_data[0] = SI4463_FIFO_INFO;
 	spi_data[1] = clrf;
 	if (spi_send(2, 2) == 0)
 		return;
-	rp->rx_fifo = spi_data[0];
-	rp->tx_fifo = spi_data[1];
+	radio.rx_fifo = spi_data[0];
+	radio.tx_fifo = spi_data[1];
 }
 
 /*
  *
  */
 void
-libradio_get_int_status(struct libradio *rp)
+libradio_get_int_status()
 {
 	spi_data[0] = SI4463_GET_INT_STATUS;
 	spi_data[1] = 0;
@@ -224,14 +224,14 @@ libradio_get_int_status(struct libradio *rp)
 	spi_data[3] = 0;
 	if (spi_send(4, 8) == 0)
 		return;
-	rp->int_pending = spi_data[0];
-	rp->int_status = spi_data[1];
-	rp->ph_pending = spi_data[2];
-	rp->ph_status = spi_data[3];
-	rp->modem_pending = spi_data[4];
-	rp->modem_status = spi_data[5];
-	rp->chip_pending = spi_data[6];
-	rp->chip_status = spi_data[7];
+	radio.int_pending = spi_data[0];
+	radio.int_status = spi_data[1];
+	radio.ph_pending = spi_data[2];
+	radio.ph_status = spi_data[3];
+	radio.modem_pending = spi_data[4];
+	radio.modem_status = spi_data[5];
+	radio.chip_pending = spi_data[6];
+	radio.chip_status = spi_data[7];
 }
 
 #if 0
@@ -325,10 +325,10 @@ radio_rx(uchar_t ch)
 }
 
 /*
- * Transmit a character via the rp->
+ * Transmit a character via the radio.
  */
 void
-radio_tx(struct libradio *rp)
+radio_tx()
 {
 	if (escape != 0) {
 		_send(escape & 0x7f, 1);

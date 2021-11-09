@@ -1,37 +1,51 @@
 ;
-; Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights reserved.
-; Unpublished rights reserved under the copyright laws  of the Republic
-; of Ireland.
+; Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights
+; reserved.
 ;
-; The software contained herein is proprietary to and embodies the
-; confidential technology of Kalopa Robotics Limited.  Possession,
-; use, duplication or dissemination of the software and media is
-; authorized only pursuant to a valid written license from Kalopa
-; Robotics Limited.
+; Redistribution and use in source and binary forms, with or without
+; modification, are permitted provided that the following conditions
+; are met:
 ;
-; RESTRICTED RIGHTS LEGEND   Use, duplication, or disclosure by
-; the U.S.  Government is subject to restrictions as set forth in
-; Subparagraph (c)(1)(ii) of DFARS 252.227-7013, or in FAR 52.227-19,
-; as applicable.
+; 1. Redistributions of source code must retain the above copyright
+; notice, this list of conditions and the following disclaimer.
 ;
-; THIS SOFTWARE IS PROVIDED BY KALOPA ROBOTICS LIMITED "AS IS" AND ANY
-; EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-; IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-; PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL KALOPA ROBOTICS LIMITED
-; BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-; OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
-; OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-; BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-; WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-; OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+; 2. Redistributions in binary form must reproduce the above
+;    copyright notice, this list of conditions and the following
+;    disclaimer in the documentation and/or other materials provided
+;    with the distribution.
+;
+; 3. Neither the name of the copyright holder nor the names of its
+;    contributors may be used to endorse or promote products derived
+;    from this software without specific prior written permission.
+;
+; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+; "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT
+; NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+; FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+; SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
+; DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+; DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+; GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+; INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+; WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+; NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ;
 ; ABSTRACT
+; On this particular board, the SS (or Slave Select) signal for the SPI
+; is on bit 1 of port B. The function herein sets or resets the state of
+; the SS pin.
 ;
 #include <avr/io.h>
 ;
 ; void _setss(uchar_t);
 ;
-; Turn on or off the SS pin of the SPI port. Note that when we 
+; Turn on or off the SS pin of the SPI port. Note that when we turn off
+; the SS pin by setting it HIGH. As the pin is an open-collector output,
+; it takes a bit of time to rise up to Vcc. So to be sure the radio
+; actually sees the edge, we wait about 0.5uS for the rise time. Really
+; we only need to do this if we're planning on setting it low again
+; immediately afterwards, but this is simpler than a lot of tests.
 	.global	_setss
 	.func	_setss
 _setss:

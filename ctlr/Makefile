@@ -1,6 +1,5 @@
 #
-# Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights
-# reserved.
+# Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -32,7 +31,8 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 #
 # ABSTRACT
-# Yes, this is the Makefile. What can I say? It makes stuff...
+# This is the Makefile for the main controller. Most of the heavy lifting
+# (again) is done in avr.mk.
 #
 OS?=$(shell uname)
 

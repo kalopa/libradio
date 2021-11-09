@@ -31,14 +31,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * Receive a packet over the wire, if one is available. It assumes
- * that we are already on the correct channel and that the radio is in
- * RECEIVE mode. If not, it changes the configuration of the radio ready
- * to receive, which will probably happen before the next call.
+ * As the date and time as well as the state machine are intimately
+ * intertwined with the real-time clock interrupts, the actual ISR is
+ * part of this library rather than the application. It also manages to
+ * flash the main LED with the appropriate indication of current state.
  */
 #include <stdio.h>
 #include <avr/io.h>
-#include <avr/pgmspace.h>
 
 #include <libavr.h>
 
@@ -46,46 +45,56 @@
 #include "internal.h"
 
 /*
- * Receive data from the radio receiver. Note that if it is still powering
- * up then we'll need to wait a bit. Likewise, if the radio is asleep, we
- * will need to bring it back online.
+ * LED "songs" for the first six states.
  */
-uchar_t
-libradio_recv(struct channel *chp, uchar_t channo)
-{
-	uchar_t ret = 0;
+uint_t	songs[NLIBRADIO_STATES] = {0xffff, 0x5555, 0x1, 0x3, 0xff, 0xf7};
 
-	chp->offset = 0;
-	if (!radio.radio_active && libradio_power_up() < 0)
-		return(0);
+/*
+ * This function is called every clock tick (every 10ms) or ten times
+ * per second. Increment the millisecond clock, and if we've passed
+ * the tens of minutes, then increment that. The ToM parks itself at
+ * 145 which is an illegal value used at init, to let us know we don't
+ * actually know what time it is. We also call the heartbeat to flash
+ * the LED appropriately. This should really be called every 62.5ms.
+ * We use main_thread so the main loop doesn't run too quickly.
+ */
+void
+clocktick()
+{
+	uchar_t ledf;
+
 	/*
-	 * First up, check the RX fifo to see if we have a packet.
+	 * Only track the time of day if we've been given some sort
+	 * of useful date value via external comms.
 	 */
-	libradio_get_int_status();
-	libradio_get_fifo_info(0);
-	if (radio.rx_fifo >= SI4463_PACKET_LEN) {
-		/*
-		 * There's at least a packet. Go get it!
-		 */
-		spi_rxpacket(chp);
-		ret = 1;
+	if (radio.tens_of_minutes != 0xff) {
+		if ((radio.ms_ticks += radio.fast_period) >= 60000) {
+			radio.ms_ticks = 0;
+			radio.tens_of_minutes++;
+		}
 	}
-	if (libradio_request_device_status() != SI4463_STATE_READY &&
-					radio.curr_channel == channo)
-		return(ret);
 	/*
-	 * We're in a READY state. Let's get receiving...
+	 * Update the main LED song, one note at a time...
 	 */
-	spi_data[0] = SI4463_START_RX;
-	spi_data[1] = channo;
-	spi_data[2] = 0;		/* CONDITION: Start immediately */
-	spi_data[3] = 0;		/* RXLen(hi) */
-	spi_data[4] = SI4463_PACKET_LEN;
-	spi_data[5] = SI4463_STATE_NOCHANGE;
-	spi_data[6] = SI4463_STATE_READY;
-	spi_data[7] = SI4463_STATE_READY;
-	spi_send(8, 0);
-	radio.saw_rx = 1;
-	radio.curr_channel = channo;
-	return(ret);
+	_setled(ledf = (radio.heart_beat & 0x8000) ? 1 : 0);
+	radio.heart_beat = (radio.heart_beat << 1) | ledf;
+	/*
+	 * Kick the main thread, if appropriate.
+	 */
+	if (radio.main_ticks != 0 && --radio.main_ticks == 0) {
+		radio.main_thread = 1;
+		radio.main_ticks = 1;
+	}
+}
+
+/*
+ * Set the LED "song" based on the state.
+ */
+void
+libradio_set_song(uchar_t new_state)
+{
+	if (new_state <= LIBRADIO_STATE_ACTIVE)
+		radio.heart_beat = songs[new_state];
+	else
+		radio.heart_beat = songs[LIBRADIO_STATE_ACTIVE];
 }

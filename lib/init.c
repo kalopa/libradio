@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights
- * reserved.
+ * Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,33 +31,62 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * All radio communications happens here.
- * 434.00 to 434.80 MHz.
+ * The main library initialization code. The init call takes four bytes as
+ * arguments. These represent the "world"-unique identification numbers
+ * for the devices. They don't actually need to be globally unique,
+ * just unique to your environment. The first two bytes represent
+ * the category of device, whereas the last two represent the device
+ * number. Sort of like the ClassID and the InstanceID. Define a taxonomy
+ * for your environment, and assign the cat1 and cat2 bytes based on
+ * that schema. Then number each unique device within each category,
+ * so that no two devices ever have the same four-byte number.
  */
 #include <stdio.h>
 #include <avr/io.h>
 #include <avr/pgmspace.h>
+#include <string.h>
 
 #include <libavr.h>
 
 #include "libradio.h"
-#include "radio.h"
+#include "internal.h"
+
+struct libradio		radio;
 
 /*
  * Our initial NodeID is zero, until we are activated. Also, while we are
- * waiting for activation, listen to the unactivated group.
+ * waiting for activation, listen to the unactivated group. This node is
+ * identified by four bytes. C1/C2 and N1/N2. Generally the first two
+ * represent the class of device and the last two the device instance.
+ * C1/C2 would be hard-coded in the caller, while N1/N2 would be pulled
+ * from EEPROM. The node is activated by identifying the unique four byte
+ * tuple. Don't track elapsed time until we have real values for the date.
  */
 void
-libradio_init(struct libradio *rp)
+libradio_init(uchar_t c1, uchar_t c2, uchar_t n1, uchar_t n2)
 {
-	libradio_set_song(rp->state = LIBRADIO_STATE_REBOOT);
-	rp->tens_of_minutes = 145;
-	rp->ms_ticks = rp->date = 0;
-	rp->npacket_rx = rp->npacket_tx = 0;
-	rp->my_channel = rp->my_node_id = rp->curr_channel = 0;
-	rp->curr_state = SI4463_STATE_SLEEP;
-	rp->rx_fifo = 0;
-	rp->tx_fifo = 0;
-	rp->radio_active = 0;
-	spiinit();
+	memset((void *)&radio, 0, sizeof(struct libradio));
+	libradio_set_state(LIBRADIO_STATE_STARTUP);
+	libradio_set_clock(10, 1280);
+	radio.tens_of_minutes = 0xff;
+	radio.main_ticks = 50;		/* TEMP */
+	radio.curr_state = SI4463_STATE_SLEEP;
+	radio.cat1 = c1;
+	radio.cat2 = c2;
+	radio.num1 = n1;
+	radio.num2 = n2;
+	spi_init();
+}
+
+/*
+ * Set the fast and slow clock parameters. Each argument defines the number
+ * of absolute milliseconds of each clock interrupt in fast or slow mode. The
+ * default is a 10ms clock interval when running normally and a 1s interval
+ * in low power mode.
+ */
+void
+libradio_set_clock(uint_t fast, uint_t slow)
+{
+	radio.fast_period = fast;
+	radio.slow_period = slow;
 }

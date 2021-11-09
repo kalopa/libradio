@@ -1,39 +1,45 @@
 /*
  * Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights reserved.
- * Unpublished rights reserved under the copyright laws  of the Republic
- * of Ireland.
  *
- * The software contained herein is proprietary to and embodies the
- * confidential technology of Kalopa Robotics Limited.  Possession,
- * use, duplication or dissemination of the software and media is
- * authorized only pursuant to a valid written license from Kalopa
- * Robotics Limited.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
  *
- * RESTRICTED RIGHTS LEGEND   Use, duplication, or disclosure by
- * the U.S.  Government is subject to restrictions as set forth in
- * Subparagraph (c)(1)(ii) of DFARS 252.227-7013, or in FAR 52.227-19,
- * as applicable.
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
  *
- * THIS SOFTWARE IS PROVIDED BY KALOPA ROBOTICS LIMITED "AS IS" AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL KALOPA ROBOTICS LIMITED
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
- * OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
- * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
- * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
- * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
- * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
+ * This is where the low-level serial peripheral interface (SPI) activity
+ * takes place. Functions to read and write a byte over the SPI port are
+ * contained in here, and in the low-level _setss() function. Eventually
+ * this stuff will operate via interrupts, but for now it is polled.
  */
 #include <stdio.h>
 #include <avr/io.h>
 #include <libavr.h>
 
 #include "libradio.h"
-#include "radio.h"
+#include "internal.h"
 
 #define MAX_COUNT		1000
 
@@ -48,7 +54,7 @@ uchar_t		spi_data[MAX_SPI_BLOCK];
  * of 1MHz with interrupts enabled.
  */
 void
-spiinit()
+spi_init()
 {
 	spi_index = spi_send_len = spi_recv_len = 0;
 	SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR0);
@@ -124,7 +130,7 @@ spi_send(uchar_t send_len, uchar_t recv_len)
  * the system clock ticks during this function, so beware...
  */
 void
-spi_rxpacket(struct libradio *rp, struct channel *chp)
+spi_rxpacket(struct channel *chp)
 {
 	int i;
 	uchar_t *cp;
@@ -134,13 +140,13 @@ spi_rxpacket(struct libradio *rp, struct channel *chp)
 	spi_byte(SI4463_READ_RX_FIFO);
 	myticks = spi_byte(0);
 	myticks |= (spi_byte(0) << 8);
-	chp->offset = rp->rx_fifo - 2;
+	chp->offset = radio.rx_fifo - 2;
 	printf("OFF:%d\n", chp->offset);
 	for (i = 0, cp = chp->payload; i < chp->offset; i++)
 		*cp++ = spi_byte(0x00);
 	_setss(0);
 	cli();
-	rp->ms_ticks = myticks;
+	radio.ms_ticks = myticks;
 	sei();
 }
 
@@ -152,7 +158,7 @@ spi_rxpacket(struct libradio *rp, struct channel *chp)
  * lag.
  */
 void
-spi_txpacket(struct libradio *rp, struct channel *chp)
+spi_txpacket(struct channel *chp)
 {
 	int i;
 	uchar_t *cp;
@@ -161,7 +167,7 @@ spi_txpacket(struct libradio *rp, struct channel *chp)
 	_setss(1);
 	spi_byte(SI4463_WRITE_TX_FIFO);
 	cli();
-	myticks = rp->ms_ticks;
+	myticks = radio.ms_ticks;
 	sei();
 	spi_byte(myticks & 0xff);
 	spi_byte((myticks >> 8) & 0xff);

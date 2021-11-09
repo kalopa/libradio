@@ -1,6 +1,5 @@
 #
-# Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights
-# reserved.
+# Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -32,7 +31,8 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 #
 # ABSTRACT
-# Include file for AVR Makefiles...
+# Include file for AVR Makefiles... This is where all the actual build
+# complexity lives.
 #
 OS?=$(shell uname)
 
@@ -78,7 +78,7 @@ CFLAGS=	-Wall -O2 -mmcu=$(DEVICE) -I$(AVR) -I.. -Wa,-adhlns=$(<:%.c=%.lst)
 #ASFLAGS= -mmcu=$(DEVICE) -I$(AVR)
 #CFLAGS=	-Wall -O2 -mmcu=$(DEVICE) -I$(AVR)
 LDFLAGS=-nostartfiles -mmcu=$(DEVICE) -L$(AVR) -Wl,--section-start=.bstrap0=0x7e00
-LIBS=	-lavr.$(DEVICE) -L../lib -lradio
+LIBS=	-L../lib -lradio -lavr.$(DEVICE) 
 
 all:	$(BIN)
 

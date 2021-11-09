@@ -1,6 +1,5 @@
 #
-# Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights
-# reserved.
+# Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -33,20 +32,16 @@
 #
 # ABSTRACT
 # Yes, this is the Makefile. What can I say? It makes stuff... A lot of
-# the real "meat and potatoes" is saved, in the avr.mk file which is
-# derived from the one in https://github.com/kalopa/libavr.git
+# the real "meat and potatoes" is saved in the avr.mk file which is
+# derived from the one in https://github.com/kalopa/libavr.git. It builds
+# the main library.
 #
 
 DEVICE=	atmega328p
 
 ASRCS=	setss.S
-CSRCS=	init.c loop.c send.c recv.c power.c radio.c spi.c command.c \
-	heartbeat.c
-
-# https://eleccelerator.com/fusecalc/fusecalc.php
-LFUSE=0xdf
-HFUSE=0xd9
-EFUSE=0xff
+CSRCS=	init.c state.c command.c send.c recv.c \
+	power.c radio.c clock.c spi.c
 
 include ../avr.mk
 
@@ -55,7 +50,7 @@ all:	$(LIBRADIO)
 install: $(LIBRADIO)
 
 clean:
-	rm -f $(LIBRADIO) $(OBJS) errs
+	rm -f $(LIBRADIO) $(OBJS) *.lst errs
 
 $(LIBRADIO):	$(OBJS)
 	$(AR) cru $(LIBRADIO) $?
