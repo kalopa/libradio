@@ -41,33 +41,8 @@
 /*
  * State machine used to manager radio operations. The states are
  * extensible. Just make sure the additional states start with
- * NLIBRADIO_STATES and go up from there. The state definitions are
- * as follows:
- *
- * - STARTUP: Set initially after a reboot. When the system is set up,
- *   it will switch to a LISTEN state.
- *
- * - ERROR: Something fatal happened. It will remain in this state
- *   for 15 minutes or until it is reset.
- *
- * - COLD: Lowest power consumption. Wakes up once an hour and checks (via
- *   LISTEN) for radio traffic.
- *
- * - WARM: Low power, offline mode. Wakes up every fifteen minutes and
- *   checks for radio traffic.
- *
- * - LISTEN: In this state, the system will activate the receive
- *   circuitry and listen on channel 0 for any valid radio traffic. If
- *   an ACTIVATION command is received for this node, it will move to
- *   an ACTIVE state. Otherwise, after a minute, if traffic is seen, it
- *   will fall back to a WARM sleep. If the radio is completely quiet,
- *   it will fall back to a COLD sleep.
- *
- * - ACTIVE: This device is active. It has an Rx channel and a
- *   NodeID. It will continue to listen for messages until either it is
- *   deactivated or there has been no radio traffic in the intervening
- *   fifteen minutes. At which point, it will drop down to a LISTEN
- *   state.
+ * NLIBRADIO_STATES and go up from there. The states are documented in the
+ * README file.
  */
 #define LIBRADIO_STATE_STARTUP		0
 #define LIBRADIO_STATE_ERROR		1
@@ -77,14 +52,15 @@
 #define LIBRADIO_STATE_ACTIVE		5
 #define NLIBRADIO_STATES			6
 
-#define RADIO_CMD_FIRMWARE			0
-#define RADIO_CMD_STATUS			1
-#define RADIO_CMD_ACTIVATE			2
-#define RADIO_CMD_DEACTIVATE		3
-#define RADIO_CMD_SET_TIME			4
-#define RADIO_CMD_SET_DATE			5
-#define RADIO_CMD_READ_EEPROM		6
-#define RADIO_CMD_WRITE_EEPROM		7
+#define RADIO_CMD_NOOP				0
+#define RADIO_CMD_FIRMWARE			1
+#define RADIO_CMD_STATUS			2
+#define RADIO_CMD_ACTIVATE			3
+#define RADIO_CMD_DEACTIVATE		4
+#define RADIO_CMD_SET_TIME			5
+#define RADIO_CMD_SET_DATE			6
+#define RADIO_CMD_READ_EEPROM		7
+#define RADIO_CMD_WRITE_EEPROM		8
 
 #define RADIO_CMD_ADDITIONAL_BASE	16
 

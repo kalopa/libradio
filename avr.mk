@@ -73,10 +73,8 @@ LFUSE?=0xef
 HFUSE?=0xcd
 EFUSE?=0xff
 
-ASFLAGS= -mmcu=$(DEVICE) -I$(AVR) -adhlns=$(<:%.S=%.lst)
-CFLAGS=	-Wall -O2 -mmcu=$(DEVICE) -I$(AVR) -I.. -Wa,-adhlns=$(<:%.c=%.lst)
-#ASFLAGS= -mmcu=$(DEVICE) -I$(AVR)
-#CFLAGS=	-Wall -O2 -mmcu=$(DEVICE) -I$(AVR)
+ASFLAGS= -mmcu=$(DEVICE) -I$(AVR)
+CFLAGS=	-Wall -O2 -mmcu=$(DEVICE) -I$(AVR) -I..
 LDFLAGS=-nostartfiles -mmcu=$(DEVICE) -L$(AVR) -Wl,--section-start=.bstrap0=0x7e00
 LIBS=	-L../lib -lradio -lavr.$(DEVICE) 
 
