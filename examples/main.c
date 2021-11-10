@@ -175,3 +175,13 @@ power_mode(uchar_t hi_flag)
 	TIMSK1 = (1<<OCIE1A);
 	sei();
 }
+
+
+/*
+ * Report oiltank status back to the requested receiver.
+ */
+int
+fetch_status(uchar_t status_type, uchar_t *cp)
+{
+	/* FIXME: Add oil tank measurement here. */
+}

@@ -49,6 +49,7 @@
 #define IO_STATE_WAITNODE		3
 #define IO_STATE_WAITCMD		4
 #define IO_STATE_WAITDATA		5
+#define IO_STATE_SAWCTRLE		6
 
 #define STATE(s, ch)			((ch) << 3 | (s))
 
@@ -59,6 +60,11 @@ struct channel	channels[MAX_CHANNELS], *chp;
 struct packet	*pp;
 
 uchar_t priorities[NPRIORITIES] = {0,1,3,1,2,1,3,4,2,1,3,1,2,1,4,1,2,4,1,3,1,2,1,2,5};
+uchar_t config_states[3] = {
+	LIBRADIO_CHSTATE_DISABLED,
+	LIBRADIO_CHSTATE_READ,
+	LIBRADIO_CHSTATE_EMPTY
+};
 
 uchar_t		execute(struct packet *);
 void		send_time(struct channel *);
@@ -75,7 +81,21 @@ opinit()
 
 	channel_prio = 0;
 	for (i = 0; i < MAX_CHANNELS; i++)
-		channels[i].state = CHANNEL_STATE_EMPTY;
+		channels[i].state = CHANNEL_STATE_DISABLED;
+}
+
+/*
+ *
+ */
+void
+op_set_channel(uchar_t channo, uchar_t config)
+{
+	struct channel *chp;
+
+	if (channo < 0 || channo >= MAX_CHANNELS || config < 0 || config > 3)
+		return;
+	chp = channels[channo];
+	chp->state = config_states[config];
 }
 
 /*
@@ -189,13 +209,32 @@ process_input()
 {
 	uchar_t ch = getchar();
 
+	if (ch == '\005') {
+		/*
+		 * In deference to TOPS-20, a ^E\ character sequence will switch to
+		 * the bootstrap loader.
+		 */
+		state = IO_STATE_SAWCTRLE;
+		return;
+	}
+	/*
+	 * A carriage-return or newline is a good way to flush out any junk and
+	 * get to a known state on the serial input.
+	 */
 	if (ch == '\n' || ch == '\r') {
 		if (state >= IO_STATE_WAITCMD)
 			enqueue();
 		state = IO_STATE_NEWLINE;
 		return;
 	}
+	/*
+	 * Otherwise, use a state machine to handle character input.
+	 */
 	switch (STATE(state, ch)) {
+	case STATE(IO_STATE_SAWCTRLE, '\\'):
+		_bootstrap();
+		break;
+
 	case STATE(IO_STATE_NEWLINE, '>'):
 		state = IO_STATE_WAITCHAN;
 		break;

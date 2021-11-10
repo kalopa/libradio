@@ -121,6 +121,15 @@ libradio_loop()
 }
 
 /*
+ * Helper function to return the current state.
+ */
+uchar_t
+libradio_get_state()
+{
+	return(radio.state);
+}
+
+/*
  * Update the state and the associated parameters. Note that this should be
  * idempotent in that it will not change anything unless there is an actual
  * state change.

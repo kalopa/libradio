@@ -49,7 +49,18 @@
 #include "internal.h"
 
 /*
- * 
+ * We have two application-specific commands, which allow the upstream
+ * overlords to specify what channels we can use.
+ */
+#define RADIO_CMD_SET_CHANNEL		(RADIO_CMD_ADDITIONAL_BASE+0)
+
+/*
+ * Get the ball rolling on the main controller. Note that we start up in a
+ * LISTEN state too, but it's mostly irrelevant. We don't really go into the
+ * same low-power, suspended animation state of the clients. We'll be
+ * checking for RS232 data pretty much always, even in a COLD sleep. The
+ * assumption is that power consumption isn't an issue, and the upstream
+ * comms client won't want to wait an hour until the device sees the message.
  */
 int
 main()
@@ -58,73 +69,129 @@ main()
 	 * Do the device initialization first...
 	 */
 	_setled(1);
-	set_state(SYSTEM_STATE_ERROR);
-	clockinit();
-	serialinit();
-	spiinit();
+	clock_init();
+	/*
+	 * Set the baud rate and configure the USART. Our chosen baud rate is
+	 * 38.4kbaud (with a 16MHz crystal).
+	 */
+	cli();
+	UBRR0 = 25;
+	UCSR0B = (1<<RXCIE0)|(1<<UDRIE0)|(1<<RXEN0)|(1<<TXEN0);
+	UCSR0C = (1<<UCSZ01)|(1<<UCSZ00);
 	(void )fdevopen(sio_putc, sio_getc);
 	sei();
-	eeprominit();
-	/*
-	 * Now do the soft init...
-	 */
-	putchar('\n');
-	putchar('\n');
-	opinit();
-	radioinit();
+	printf("\nMain radio control system v1.0.\n");
 	report(RADIO_CMD_FIRMWARE);
-	set_state(SYSTEM_STATE_STARTUP);
-	radio_power_up();
+	/*
+	 * Initialize the radio circuitry. We don't really care about our category
+	 * and ID number because we will get activated over the 1:1 serial line.
+	 * The EEPROM data however will be used for channel ownership information.
+	 */
+	libradio_init(1, 1, 1, 1);
+	libradio_set_clock(10, 10);
+	opinit();
+	/*
+	 * Begin the main loop - every clock tick, call the radio loop.
+	 */
 	while (1) {
-		main_wait();
 		/*
-		 * Process some serial port stuff.
+		 * Handle serial data from our upstream overlords.
 		 */
-		while (!sio_iqueue_empty())
+		if (!sio_iqueue_empty())
 			process_input();
-		if (system_state == SYSTEM_STATE_ACTIVE ||
-						system_state == SYSTEM_STATE_SHUTDOWN)
+		/*
+		 * Check if we have anything to send.
+		 */
+		if (libradio_get_state() == LIBRADIO_STATE_ACTIVE)
 			do_transmit();
+		/*
+		 * Call the libradio function to see if there's anything to do on
+		 * the radio side of things. This routine only returns after a
+		 * sleep or if the main clock has ticked.
+		 */
+		libradio_loop();
 	}
 }
 
 /*
- * Execute a packet command, locally.
+ * Execute a packet command, locally. For the most part, we try to just use
+ * the code in libradio_command() but that won't work for things which send
+ * data back, or things like activation where we don't care about the actual
+ * IDs sent - they came over the serial line, we know it's for us!
  */
 uchar_t
 execute(struct packet *pp)
 {
+	int i, j, len, addr, rchan, rnode;
+
+
 	switch (pp->cmd) {
-	case RADIO_CMD_FIRMWARE:
-	case RADIO_CMD_STATUS:
-		report(pp->cmd);
-		break;
-
-	case RADIO_CMD_MASTER_ACTIVATE:
-		radio.my_node_id = pp->node;
-		set_state(SYSTEM_STATE_ACTIVE);
-		break;
-
 	case RADIO_CMD_DEACTIVATE:
-		/*
-		 * Go to SHUTDOWN mode. This involves flushing the transmit queues
-		 * and then shutting down the radio. After that, the system goes
-		 * to a SLEEP state.
-		 */
-		set_state(SYSTEM_STATE_SHUTDOWN);
-		break;
-
 	case RADIO_CMD_SET_TIME:
-		if (pp->len != 3)
-			return(0);
-		ticks = (pp->data[1] << 8 | pp->data[0]);
-		tens_of_minutes = pp->data[2];
+	case RADIO_CMD_SET_DATE:
+	case RADIO_CMD_WRITE_EEPROM:
+		/*
+		 * Use the library mechanism for these commands.
+		 */
+		libradio_command(pp);
 		break;
 
-	case RADIO_CMD_SET_DATE:
+	case RADIO_CMD_ACTIVATE:
+		/*
+		 * Activate this device. Don't even check the IDs, just do it.
+		 */
+		if (pp->len != 6)
+			break;
+		printf("Master Activate!\n");
+		radio.my_channel = pp->data[0];
+		radio.my_node_id = pp->data[1];
+		libradio_set_state(LIBRADIO_STATE_ACTIVE);
+		break;
+
+	case RADIO_CMD_STATUS:
+		/*
+		 * Report status back over the serial line.
+		 */
+		if (pp->len != 3)
+			break;
+		rchan = pp->data[0];
+		rnode = pp->data[1];
+		printf("<%c:%d:%d,%d,%d,%u,%u\n",
+						rchan + 'A', rnode,
+						FW_VERSION_H, FW_VERSION_L, system_state,
+						radio.npacket_rx, radio.npacket_tx);
+		break;
+
+	case RADIO_CMD_READ_EEPROM:
+		/*
+		 * Read up to 16 bytes of EEPROM data. The result is saved in a
+		 * packet buffer and transmitted on the specified channel.
+		 */
+		if (pp->len != 5)
+			break;
+		rchan = pp->data[0];
+		rnode = pp->data[1];
+		len = pp->data[2];
+		addr = (pp->data[4] << 8 | pp->data[3]);
+		printf("RChan/Node %d:%d, len:%d, addr:%d\n", rchan, node, len, addr);
+		printf("<%c:%d:", rchan + 'A', rnode);
+		for (i = 0; i < len; i++, addr++) {
+			if (i != 0)
+				putchar(',')
+			printf("%u", eeprom_read_byte((const unsigned char *)addr));
+		}
+		putchar('\n');
+		break;
+
+	case RADIO_CMD_SET_CHANNEL:
+		/*
+		 * The SET CHANNEL command enables, disables, or sets a read
+		 * channel. It has two arguments - the channel number, and
+		 * the state.
+		 */
 		if (pp->len != 2)
-			return(0);
-		date = (pp->data[1] << 8 | pp->data[0]);
+			break;
+		op_set_channel(pp->data[0], pp->data[1]);
 		break;
 
 	default:
@@ -141,9 +208,5 @@ report(uchar_t rtype)
 {
 	printf("<A%d:%d:", radio.my_node_id, rtype);
 	if (rtype == RADIO_CMD_FIRMWARE) {
-		printf("%d,%d,%d.\n", NODE_TYPE, FW_VERSION_H, FW_VERSION_L);
-	} else {
-		printf("%d,%u,%u,%u,%u.\n", system_state, ticks, tens_of_minutes,
-							radio.npacket_rx, radio.npacket_tx);
 	}
 }

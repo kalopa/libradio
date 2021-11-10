@@ -90,9 +90,11 @@ struct channel	{
 	uchar_t 	payload[MAX_FIFO_SIZE];
 };
 
-#define LIBRADIO_CHSTATE_EMPTY			0
-#define LIBRADIO_CHSTATE_ADDING			1
-#define LIBRADIO_CHSTATE_TRANSMIT		2
+#define LIBRADIO_CHSTATE_DISABLED		0
+#define LIBRADIO_CHSTATE_READ			1
+#define LIBRADIO_CHSTATE_EMPTY			2
+#define LIBRADIO_CHSTATE_ADDING			3
+#define LIBRADIO_CHSTATE_TRANSMIT		4
 
 extern	volatile uchar_t	main_thread;
 
@@ -100,6 +102,7 @@ extern	volatile uchar_t	main_thread;
  * Prototypes...
  */
 void	libradio_init(uchar_t, uchar_t, uchar_t, uchar_t);
+uchar_t	libradio_get_state();
 void	libradio_set_state(uchar_t);
 void	libradio_set_clock(uchar_t, uchar_t);
 void	libradio_loop();
@@ -128,4 +131,5 @@ void	libradio_get_int_status();
  * low power modes.
  */
 void	operate(struct packet *);
+int		fetch_status(uchar_t, uchar_t *);
 void	power_mode(uchar_t);
