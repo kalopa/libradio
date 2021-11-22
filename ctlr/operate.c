@@ -113,8 +113,9 @@ do_transmit()
 	if ((ticks % 1000) == 0) {
 		i = (ticks / 1000) % MAX_CHANNELS;
 		chp = &channels[i];
-		if (chp->state != CHANNEL_STATE_ADDING &&
-								chp->offset < (MAX_FIFO_SIZE - 8))
+		if (chp->state != LIBRADIO_CHSTATE_ADDING &&
+						chp->state != LIBRADIO_CHSTATE_READ &&
+						chp->offset < (MAX_FIFO_SIZE - 8))
 			send_time(chp);
 	}
 	/*
