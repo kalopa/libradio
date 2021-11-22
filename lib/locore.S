@@ -32,17 +32,15 @@
 ; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ;
 ; ABSTRACT
-; This AVR assembly code contains all the necessary startup code for our
-; oil tank measurement device. The only interrupts which are (currently)
-; used are for serial I/O and for the clock/timer (OC1A), which is used
-; for delays and real-time clock management. The radio IRQ and the SPI
-; IRQ are reserved for future use.
+; This AVR assembly code contains all the necessary startup code for
+; a standard Kalopa AVR radio board. It has the main startup code,
+; the IRQ vector table and some of the main IRQ functions.  The radio
+; IRQ and the SPI IRQ are reserved for future use.
 ;
 ; The clock IRQ just saves some registers and calls the C code. The
 ; ioinit() function is used to configure the AVR I/O ports and do any
 ; special start-up in the I/O system (stuff that might be specific to
-; this device). Finally, the setled function is used to turn on and off
-; an onboard LED so we can see what the code is doing.
+; this device).
 ;
 ; NOTE: The other functions called (such as _reset, sio_in and sio_out)
 ; are in the Kalopa libavr library - https://github.com/kalopa/libavr.
@@ -141,24 +139,5 @@ _ioinit:
 	out		_SFR_IO_ADDR(DDRD),r16
 	ret
 	.endfunc
-;
-; void _setled(uchar_t);
-;
-; Turn on or off the LED.
-	.global	_setled
-	.func	_setled
-_setled:
-	tst		r24					; LED on or off?
-	breq	1f
-	cbi		_SFR_IO_ADDR(PORTD),3				; Turn on the LED
-	ret
-1:
-	sbi		_SFR_IO_ADDR(PORTD),3				; Turn off the LED
-	ret
-	.endfunc
-;
-; Some useful (low level) variables...
-	.weak	__heap_end
-	.set	__heap_end,0
 ;
 ; Fin

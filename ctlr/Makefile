@@ -34,103 +34,21 @@
 # This is the Makefile for the main controller. Most of the heavy lifting
 # (again) is done in avr.mk.
 #
-OS?=$(shell uname)
-
-ifeq (${OS}, Darwin)
-	BINDIR=/usr/local/bin
-else
-ifeq (${OS}, FreeBSD)
-	BINDIR=/usr/local/bin
-else
-	BINDIR=/usr/bin
-endif
-endif
-
-AVR?=../libavr
-STDPROM=$(AVR)/stdprom.x
-
-AR=$(BINDIR)/avr-ar
-AS=$(BINDIR)/avr-as
-CC=$(BINDIR)/avr-gcc
-C++=$(BINDIR)/avr-c++
-G++=$(BINDIR)/avr-g++
-GCC=$(BINDIR)/avr-gcc
-LD=$(BINDIR)/avr-ld
-NM=$(BINDIR)/avr-nm
-OBJDUMP=$(BINDIR)/avr-objdump
-RANLIB=$(BINDIR)/avr-ranlib
-STRIP=$(BINDIR)/avr-strip
-
 DEVICE=	atmega328p
-PROG=usbtiny
-ASRCS=	locore.s
-CSRCS=	main.c operate.c \
-	timer.c radio.c serial.c spi.c \
-	eeprom.c utils.c
-OBJS=	$(ASRCS:.s=.o) $(CSRCS:.c=.o)
+
+ASRCS=
+CSRCS=	main.c operate.c time.c
 BIN=	radiocon
 FIRMWARE=radiocon.hex
 
-LFUSE=0xdf
-HFUSE=0xd9
+# https://eleccelerator.com/fusecalc/fusecalc.php
+LFUSE=0xef
+HFUSE=0xdf
 EFUSE=0xff
 
-ASFLAGS= -mmcu=$(DEVICE) -I$(AVR) -adhlns=$(<:%.S=%.lst)
-CFLAGS=	-Wall -O2 -mmcu=$(DEVICE) -I$(AVR) -Wa,-adhlns=$(<:%.c=%.lst)
-#ASFLAGS= -mmcu=$(DEVICE) -I$(AVR)
-#CFLAGS=	-Wall -O2 -mmcu=$(DEVICE) -I$(AVR)
-LDFLAGS=-nostartfiles -mmcu=$(DEVICE) -L$(AVR) -Wl,--section-start=.bstrap0=0x7e00
-LIBS=	-lavr.$(DEVICE)
+include ../avr.mk
 
-all:	$(BIN)
+$(BIN):	$(OBJS) $(LIBRADIO)
+		$(CC) -o $(BIN) $(LDFLAGS) $(OBJS) $(LIBS)
 
-clean:
-	rm -f $(BIN) $(OBJS) $(FIRMWARE) $(EXTRA_CLEAN) *.lst srclist.ps srclist.pdf errs
-
-program: $(FIRMWARE)
-	sudo avrdude -p $(DEVICE) -c $(PROG) -U flash:w:$(FIRMWARE):i
-	rm $(FIRMWARE)
-
-eeprom: promdata.eep
-	sudo avrdude -p $(DEVICE) -c $(PROG) -U eeprom:w:promdata.eep:i
-
-fuses:
-	sudo avrdude -p $(DEVICE) -c $(PROG) -U lfuse:w:$(LFUSE):m -U hfuse:w:$(HFUSE):m -U efuse:w:$(EFUSE):m
-
-erase:
-	sudo avrdude -p $(DEVICE) -c $(PROG) -e
-
-tags:	$(ASRCS) $(CSRCS)
-	ctags $(CSRCS)
-	grep '^_.*:$$' $(ASRCS) /dev/null | awk -F: '{printf "%s\t%s\t/^%s:$$/\n", $$2, $$1, $$2}' >> tags
-	sort tags > tags-
-	mv tags- tags
-
-docs:	srclist.pdf
-
-$(FIRMWARE): $(BIN)
-	avr-objcopy -O ihex $(BIN) $(FIRMWARE)
-
-$(BIN):	$(OBJS)
-	$(CC) -o $(BIN) $(LDFLAGS) $(OBJS) $(LIBS)
-
-$(OBJS): libradio.h
-
-radio.o: radio_config.h
-
-%.o:	%.S
-	$(CC) -E -mmcu=$(DEVICE) $< > temp.s
-	$(AS) $(ASFLAGS) -o $(<:.S=.o) temp.s
-	rm temp.s
-
-%.lst:	%.c
-	$(CC) $(CFLAGS) -Wa,-adhlns=$(<:%.c=%.lst) -c -o $(<:%.c=%.o) $<
-
-%.lst:	%.s
-	$(AS) $(ASFLAGS) -adhlns=$(<:%.s=%.lst) -o $(<:%.s=%.o) $<
-
-srclist.ps: $(CSRCS) $(ASRCS)
-	c2ps $(CSRCS) $(ASRCS) > srclist.ps
-
-srclist.pdf: srclist.ps
-	ps2pdf srclist.ps srclist.pdf
+$(OBJS): ../libradio.h

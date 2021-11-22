@@ -46,7 +46,6 @@
 #include <libavr.h>
 
 #include "libradio.h"
-#include "internal.h"
 
 /*
  * We have two application-specific commands, which allow the upstream

@@ -75,7 +75,7 @@ EFUSE?=0xff
 
 ASFLAGS= -mmcu=$(DEVICE) -I$(AVR)
 CFLAGS=	-Wall -O2 -mmcu=$(DEVICE) -I$(AVR) -I..
-LDFLAGS=-nostartfiles -mmcu=$(DEVICE) -L$(AVR) -Wl,--section-start=.bstrap0=0x7e00
+LDFLAGS=-nostartfiles -mmcu=$(DEVICE) -L$(AVR) -Wl,--section-start=.bstrap0=0x7e00,--defsym=__heap_end=0x80ffff
 LIBS=	-L../lib -lradio -lavr.$(DEVICE) 
 
 all:	$(BIN)

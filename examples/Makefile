@@ -38,7 +38,7 @@
 #
 DEVICE=	atmega328p
 
-ASRCS=	locore.S
+ASRCS=
 CSRCS=	main.c
 BIN=	oiltank
 

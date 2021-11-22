@@ -39,7 +39,7 @@
 
 DEVICE=	atmega328p
 
-ASRCS=	setss.S
+ASRCS=	locore.S setled.S setss.S
 CSRCS=	init.c state.c command.c send.c recv.c \
 	power.c radio.c clock.c spi.c
 

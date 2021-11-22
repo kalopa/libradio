@@ -184,4 +184,5 @@ int
 fetch_status(uchar_t status_type, uchar_t *cp)
 {
 	/* FIXME: Add oil tank measurement here. */
+	return(0);
 }

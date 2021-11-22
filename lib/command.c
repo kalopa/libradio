@@ -38,6 +38,7 @@
  */
 #include <stdio.h>
 #include <avr/io.h>
+#include <avr/eeprom.h>
 
 #include <libavr.h>
 
@@ -74,7 +75,7 @@ libradio_command(struct packet *pp)
 		rchan = pp->data[0];
 		rnode = pp->data[1];
 		i = pp->data[2];
-		printf(">> Send status type %d to %d:%d\n", i, rchan, node);
+		printf(">> Send status type %d to %d:%d\n", i, rchan, rnode);
 		//fetch_status(i, &statusbuffer);
 		//send...
 		break;
@@ -141,7 +142,7 @@ libradio_command(struct packet *pp)
 		rnode = pp->data[1];
 		len = pp->data[2];
 		addr = (pp->data[4] << 8 | pp->data[3]);
-		printf("RChan/Node %d:%d, len:%d, addr:%d\n", rchan, node, len, addr);
+		printf("RChan/Node %d:%d, len:%d, addr:%d\n", rchan, rnode, len, addr);
 #if 0
 		for (i = 0; i < len; i++, addr++)
 			statusbuffer[i] = eeprom_read_byte((const unsigned char *)addr);
