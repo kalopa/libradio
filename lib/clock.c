@@ -48,6 +48,7 @@
  * LED "songs" for the first six states.
  */
 uint_t	songs[NLIBRADIO_STATES] = {0xffff, 0x5555, 0x1, 0x3, 0xff, 0xf7};
+uchar_t	thread_ok;
 
 /*
  * This function is called every clock tick (every 10ms) or ten times
@@ -82,9 +83,21 @@ clocktick()
 	 * Kick the main thread, if appropriate.
 	 */
 	if (radio.main_ticks != 0 && --radio.main_ticks == 0) {
-		radio.main_thread = 1;
+		thread_ok = 1;
 		radio.main_ticks = 1;
 	}
+}
+
+/*
+ * Wait for the main tick to occur. Called from main code (not ISR).
+ */
+void
+libradio_wait_thread()
+{
+	while (thread_ok == 0)
+		_sleep();
+	thread_ok = 0;
+	putchar('+');
 }
 
 /*

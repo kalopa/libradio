@@ -40,8 +40,8 @@
 DEVICE=	atmega328p
 
 ASRCS=	locore.S setled.S setss.S
-CSRCS=	init.c state.c command.c send.c recv.c \
-	power.c radio.c clock.c spi.c
+CSRCS=	init.c loop.c state.c handle.c command.c \
+	send.c recv.c power.c radio.c clock.c spi.c
 
 include ../avr.mk
 

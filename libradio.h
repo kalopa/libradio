@@ -34,8 +34,6 @@
  * channel structure definitions. It also includes prototypes for the
  * remaining functions.
  */
-
-#define MAX_RADIO_CHANNELS	6
 #define MAX_FIFO_SIZE		46
 #define MAX_PACKET_SIZE		16
 
@@ -87,9 +85,16 @@ struct packet	{
 struct channel	{
 	uchar_t		offset;
 	uchar_t		state;
+	uchar_t		priority;
 	uchar_t 	payload[MAX_FIFO_SIZE];
 };
 
+/*
+ * Channel states. DISABLED is obvious. READ means the channel is only used
+ * by the transmit code as an RX channel. EMPTY means it doesn't have any
+ * data. ADDING means that some code is currently receiving a packet for
+ * transmission and TRANSMIT means it has at least one packet ready for TX.
+ */
 #define LIBRADIO_CHSTATE_DISABLED		0
 #define LIBRADIO_CHSTATE_READ			1
 #define LIBRADIO_CHSTATE_EMPTY			2
@@ -105,7 +110,9 @@ void	libradio_init(uchar_t, uchar_t, uchar_t, uchar_t);
 uchar_t	libradio_get_state();
 void	libradio_set_state(uchar_t);
 void	libradio_set_clock(uchar_t, uchar_t);
-void	libradio_loop();
+void	libradio_wait_thread();
+void	libradio_rxloop();
+void	libradio_command(struct packet *);
 
 uchar_t	libradio_recv(struct channel *, uchar_t);
 uchar_t	libradio_send(struct channel *, uchar_t);
@@ -124,6 +131,7 @@ void	libradio_get_chip_status();
 void	libradio_change_radio_state(uchar_t);
 void	libradio_get_fifo_info(uchar_t);
 void	libradio_get_int_status();
+void	libradio_handle_packet(struct channel *);
 
 /*
  * Callback functions. operate() is called when a packet is received which is

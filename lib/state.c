@@ -29,11 +29,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * The main application just calls libradio_loop() in the main while loop
- * and this does the bulk of the radio communications work. It manages
- * the state machine for the radio, and attempts to read (and process)
- * any received packets. The function to set the system state lives here,
- * too. So all of the mechanics of the state machine are defined in here.
+ * The function to set the system state lives here. So all of the
+ * mechanics of the state machine are defined in here.
  */
 #include <stdio.h>
 #include <avr/io.h>
@@ -42,83 +39,6 @@
 
 #include "libradio.h"
 #include "internal.h"
-
-struct channel	recvchan;
-
-void	handle_packet();
-
-/*
- * This is called repeatedly from the main loop. The task here is based on
- * the current state. Note we will halt the processor if there is nothing
- * to do at this point.
- */
-void
-libradio_loop()
-{
-	/*
-	 * First things first - wait for the clock timer to kick us into doing
-	 * something. The sleep() function will pause the CPU until the next IRQ.
-	 */
-	while (radio.main_thread == 0)
-		_sleep();
-	putchar('+');
-	/*
-	 * Depending on what state we're in, do something useful. For a lot of
-	 * these states, not much happens and all we do is move to the next
-	 * state.
-	 */
-	switch (radio.state) {
-	case LIBRADIO_STATE_ERROR:
-		/*
-		 * We are in an error state, for a full minute. Go to a WARM sleep.
-		 */
-		libradio_set_state(LIBRADIO_STATE_WARM);
-		break;
-
-	case LIBRADIO_STATE_STARTUP:
-	case LIBRADIO_STATE_COLD:
-	case LIBRADIO_STATE_WARM:
-		/*
-		 * Time to wake up and check for radio traffic.
-		 */
-		libradio_set_state(LIBRADIO_STATE_LISTEN);
-		break;
-
-	case LIBRADIO_STATE_LISTEN:
-		handle_packet();
-#if 0
-		if (--radio.timeout == 0) {
-			/*
-			 * If we're still in this state after the timeout, then we go to
-			 * WARM or COLD sleep depending on whether we've seen any traffic.
-			 */
-			libradio_set_state(radio.saw_rx ? LIBRADIO_STATE_WARM :
-												LIBRADIO_STATE_COLD);
-		}
-#else
-		radio.main_ticks = 10;
-#endif
-		break;
-
-	default:
-		/*
-		 * Any active state - check for radio traffic.
-		 */
-		handle_packet();
-		if (radio.saw_rx) {
-			radio.timeout = 60000;
-			radio.saw_rx = 0;
-		}
-		if (--radio.timeout == 0) {
-			/*
-			 * Haven't seen any traffic in a *long* time.
-			 */
-			libradio_set_state(LIBRADIO_STATE_WARM);
-		}
-		break;
-	}
-	radio.main_thread = 0;
-}
 
 /*
  * Helper function to return the current state.
@@ -204,32 +124,4 @@ libradio_set_state(uchar_t new_state)
 	radio.state = new_state;
 	sei();
 	printf("RS:%d,mt%d\n", radio.state, radio.main_ticks);
-}
-
-/*
- *
- */
-void
-handle_packet()
-{
-	int i;
-	struct packet *pp;
-	struct channel *chp = &recvchan;
-
-	/*
-	 * Look for a received packet.
-	 */
-	printf("HP:%d\n", radio.my_channel);
-	if (libradio_recv(chp, radio.my_channel)) {
-		printf("\nPacket RX! (tick:%u),len:%d\n", radio.ms_ticks, chp->offset);
-		for (i = 0; i < chp->offset;) {
-			pp = (struct packet *)&chp->payload[i];
-			printf("N%d,L%d,C%d\n", pp->node, pp->len, pp->cmd);
-			if (pp->len == 0)
-				break;
-			if (pp->node == 0 || pp->node == radio.my_node_id)
-				libradio_command(pp);
-			i += pp->len;
-		}
-	}
 }

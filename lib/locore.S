@@ -124,18 +124,18 @@ spi_irq:
 	.global	_ioinit
 	.func	_ioinit
 _ioinit:
-	ldi		r16,0xee			; DDRB=OOOI OOOI
-	ldi		r17,0x02			; PORTB=0000 0010
+	ldi		r16,0xee					; DDRB=OOOI OOOI
+	ldi		r17,0x02					; PORTB=0000 0010
 	out		_SFR_IO_ADDR(PORTB),r17
 	out		_SFR_IO_ADDR(DDRB),r16
 
-	ldi		r16,0x37			; DDRC=IIOO IOOO
-	ldi		r17,0x00			; PORTC=0000 0000
+	ldi		r16,0x37					; DDRC=IIOO IOOO
+	ldi		r17,0x00					; PORTC=0000 0000
 	out		_SFR_IO_ADDR(PORTC),r17
 	out		_SFR_IO_ADDR(DDRC),r16
 
-	ldi		r16,0xfa			; DDRD=OOOO OIOI
-	out		_SFR_IO_ADDR(PORTD),r1			; PORTD=0000 0000
+	ldi		r16,0xfa					; DDRD=OOOO OIOI
+	out		_SFR_IO_ADDR(PORTD),r1		; PORTD=0000 0000
 	out		_SFR_IO_ADDR(DDRD),r16
 	ret
 	.endfunc

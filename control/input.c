@@ -42,9 +42,6 @@
 #include "libradio.h"
 #include "control.h"
 
-#define NPRIORITIES				25
-#define MAX_CHANNELS			6
-
 #define IO_STATE_NEWLINE		0
 #define IO_STATE_WAITNL			1
 #define IO_STATE_WAITCHAN		2
@@ -55,150 +52,10 @@
 
 #define STATE(s, ch)			((ch) << 3 | (s))
 
-uchar_t			channel_prio;
 uchar_t			state = IO_STATE_NEWLINE;
 uchar_t			value;
-struct channel	channels[MAX_CHANNELS], *chp;
-struct packet	*pp;
-
-uchar_t priorities[NPRIORITIES] = {0,1,3,1,2,1,3,4,2,1,3,1,2,1,4,1,2,4,1,3,1,2,1,2,5};
-uchar_t config_states[3] = {
-	LIBRADIO_CHSTATE_DISABLED,
-	LIBRADIO_CHSTATE_READ,
-	LIBRADIO_CHSTATE_EMPTY
-};
-
-/*
- * Initialize operations. We send time stamps on each channel in and around the
- * even second, and twice per ten minute interval.
- */
-void
-oper_init()
-{
-	int i;
-
-	channel_prio = 0;
-	for (i = 0; i < MAX_CHANNELS; i++)
-		channels[i].state = CHANNEL_STATE_DISABLED;
-}
-
-/*
- *
- */
-void
-op_set_channel(uchar_t channo, uchar_t config)
-{
-	struct channel *chp;
-
-	if (channo < 0 || channo >= MAX_CHANNELS || config < 0 || config > 3)
-		return;
-	chp = channels[channo];
-	chp->state = config_states[config];
-}
-
-/*
- * Transmit a single packet, if one is available in the queue.
- */
-void
-do_transmit()
-{
-	int i, channo;
-	struct channel *chp;
-
-	/*
-	 * Every ten seconds, send a time stamp on each of the active channels.
-	 */
-	if ((ticks % 1000) == 0) {
-		i = (ticks / 1000) % MAX_CHANNELS;
-		chp = &channels[i];
-		if (chp->state != LIBRADIO_CHSTATE_ADDING &&
-						chp->state != LIBRADIO_CHSTATE_READ &&
-						chp->offset < (MAX_FIFO_SIZE - 8))
-			send_time(chp);
-	}
-	/*
-	 * Run through the priorities table to see which channel we'll do now.
-	 * The idea here is to increase the number of packets on channel 1,
-	 * less so on channel 2, and rarely send anything on channel 0. But it
-	 * is important to find an active packet so this really only comes into
-	 * play when the system is very busy.
-	 */
-	for (i = 0; i < NPRIORITIES; i++) {
-		channo = priorities[channel_prio++];
-		if (channel_prio >= NPRIORITIES)
-			channel_prio = 0;
-		chp = &channels[channo];
-		if (chp->state == CHANNEL_STATE_TRANSMIT)
-			break;
-	}
-	if (i == NPRIORITIES)
-		return;
-	/*
-	 * We have a channel ready for transmission. Send it now...
-	 */
-	chp->payload[chp->offset++] = 0;
-	chp->payload[chp->offset++] = 0;
-	if (libradio_send(chp, channo) != 0)
-		chp->state = CHANNEL_STATE_EMPTY;
-}
-
-/*
- * Add the packet to the queue. Set the state to TRANSMIT if we're ready to
- * send. Deal with the special-case where this is addressed to us and we
- * don't need to transmit it.
- */
-void
-enqueue()
-{
-	if (radio.)
-	if (pp->node == radio.my_node_id)
-		pp->cmd == COMMAND_MASTER_ACTIVATE || pp->node == radio.my_node_id) {
-		/*
-		 * This packet is for me. Don't queue it up for transmission.
-		 * Instead, execute the command. Also, free up the channel buffer
-		 * if this is the only transmission.
-		 */
-		status(execute(pp));
-		chp->state = (chp->offset == 0) ? CHANNEL_STATE_EMPTY : CHANNEL_STATE_TRANSMIT;
-		return;
-	}
-	/*
-	 * Packet is for transmission. Update the channel offset. Note that we
-	 * will only accept packets for transmission in an ACTIVE state.
-	 */
-	if (system_state == SYSTEM_STATE_ACTIVE) {
-		/*
-		 * Add the node, length and channel to the length. Then update
-		 * the overall offset.
-		 */
-		pp->len += 3;
-		chp->offset += pp->len;
-		chp->state = CHANNEL_STATE_TRANSMIT;
-		status(1);
-	} else {
-		chp->state = CHANNEL_STATE_EMPTY;
-		status(0);
-	}
-}
-
-/*
- * Send the current time of day to the specified channel.
- */
-void
-send_time(struct channel *chp)
-{
-	struct packet *pp;
-
-	if (chp->state == CHANNEL_STATE_EMPTY)
-		chp->offset = 0;
-	chp->state = CHANNEL_STATE_TRANSMIT;
-	pp = (struct packet *)&chp->payload[chp->offset];
-	pp->node = 0;
-	pp->len = 4;
-	pp->cmd = COMMAND_SET_TIME;
-	pp->data[0] = tens_of_minutes;
-	chp->offset += 4;
-}
+struct channel	*curr_chp;
+struct packet	*curr_pp;
 
 /*
  *
@@ -222,7 +79,7 @@ process_input()
 	 */
 	if (ch == '\n' || ch == '\r') {
 		if (state >= IO_STATE_WAITCMD)
-			enqueue();
+			enqueue(curr_chp, curr_pp);
 		state = IO_STATE_NEWLINE;
 		return;
 	}
@@ -249,28 +106,28 @@ process_input()
 		/*
 		 * We have a channel ID. Check it is within range.
 		 */
-		if ((value = ch - 'A') < 0 || value >= MAX_CHANNELS) {
+		if ((value = ch - 'A') < 0 || value >= MAX_RADIO_CHANNELS) {
 			/*
 			 * Invalid channel - abort!
 			 */
 			status(0);
 			break;
 		}
-		chp = &channels[value];
-		if (chp->state == CHANNEL_STATE_EMPTY)
-			chp->offset = 0;
+		curr_chp = &channels[value];
+		if (curr_chp->state == LIBRADIO_CHSTATE_EMPTY)
+			curr_chp->offset = 0;
 		else {
-			if (chp->offset + 3 >= MAX_FIFO_SIZE) {
+			if (curr_chp->offset + 3 >= MAX_FIFO_SIZE) {
 				/*
 				 * Too much data for this channel. Abort!
 				 */
-				chp->state = CHANNEL_STATE_TRANSMIT;
+				curr_chp->state = LIBRADIO_CHSTATE_TRANSMIT;
 				status(0);
 				break;
 			}
 		}
-		chp->state = CHANNEL_STATE_ADDING;
-		pp = (struct packet *)&chp->payload[chp->offset];
+		curr_chp->state = LIBRADIO_CHSTATE_ADDING;
+		curr_pp = (struct packet *)&curr_chp->payload[curr_chp->offset];
 		state = IO_STATE_WAITNODE;
 		value = 0;
 		break;
@@ -314,25 +171,25 @@ process_input()
 
 	case STATE(IO_STATE_WAITNODE, ':'):
 		state = IO_STATE_WAITCMD;
-		pp->node = value;
+		curr_pp->node = value;
 		value = 0;
 		break;
 
 	case STATE(IO_STATE_WAITCMD, ':'):
 	case STATE(IO_STATE_WAITCMD, '.'):
 		state = IO_STATE_WAITDATA;
-		pp->cmd = value;
-		pp->len = 0;
+		curr_pp->cmd = value;
+		curr_pp->len = 0;
 		value = 0;
 		if (ch == '.') {
-			enqueue();
+			enqueue(curr_chp, curr_pp);
 			state = IO_STATE_WAITNL;
 		}
 		break;
 
 	case STATE(IO_STATE_WAITDATA, ','):
 	case STATE(IO_STATE_WAITDATA, '.'):
-		if ((chp->offset + pp->len) >= (MAX_FIFO_SIZE - 2)) {
+		if ((curr_chp->offset + curr_pp->len) >= (MAX_FIFO_SIZE - 2)) {
 			/*
 			 * Too much data for this channel. Abort! Note that we reserve
 			 * two bytes to specify node:0,len:0 at the end.
@@ -340,10 +197,10 @@ process_input()
 			status(0);
 			break;
 		}
-		pp->data[pp->len++] = value;
+		curr_pp->data[curr_pp->len++] = value;
 		value = 0;
 		if (ch == '.') {
-			enqueue();
+			enqueue(curr_chp, curr_pp);
 			state = IO_STATE_WAITNL;
 		}
 		break;

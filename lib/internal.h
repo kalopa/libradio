@@ -102,7 +102,6 @@ struct libradio {
 	uint_t		date;
 	uint_t		main_ticks;
 	uint_t		timeout;
-	uchar_t		main_thread;
 	/*
 	 * Node and channel identification.
 	 */

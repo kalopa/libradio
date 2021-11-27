@@ -31,16 +31,28 @@
  * ABSTRACT
  * This is the main include file for the radio controller.
  */
+#define CONTROL_C1		1
+#define CONTROL_C2		1
+#define CONTROL_N1		1
+#define CONTROL_N2		1
+
 #define FW_VERSION_H	2
 #define FW_VERSION_L	3
+
+#define MAX_RADIO_CHANNELS	6
+
+extern struct channel		channels[MAX_RADIO_CHANNELS];
 
 /*
  * Prototypes.
  */
 void	clock_init();
-void	oper_init();
-uchar_t	execute(struct packet *);
+void	tx_init();
+void	tx_check_queues();
+void	process_input();
+uchar_t	mycommand(struct packet *);
 void	send_time(struct channel *);
-void	enqueue();
-void	op_set_channel(uchar_t, uchar_t);
-uchar_t	execute(struct packet *);
+void	enqueue(struct channel *, struct packet *);
+void	set_channel(uchar_t, uchar_t);
+void	report(uchar_t, uchar_t);
+void	status(uchar_t);

@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * All the clock timer functionality for the main controller is embedded
- * in this file. The actual interrupt handler is in the library.
+ * Handle a received packet.
  */
 #include <stdio.h>
 #include <avr/io.h>
@@ -38,46 +37,31 @@
 #include <libavr.h>
 
 #include "libradio.h"
-#include "control.h"
+#include "internal.h"
 
 /*
- * Initialize the time of day clock system. Here's the run-down of the usage:
- * Timer0 - used for RTC interrupts. Set at 1/64 divider, and CTC mode, with
- * OCR0A set to 250 (for a clock frequency of 1kHz).
+ *
  */
 void
-clock_init()
+libradio_handle_packet(struct channel *chp)
 {
+	int i;
+	struct packet *pp;
+
 	/*
-	 * Timer1 is the workhorse. It is set up with a divide-by-64 to free-run
-	 * (CTC mode) at 250kHz. We use OCR1A (set to 2499) to derive a timer
-	 * frequency of 100Hz for the main clocktick() function. If we were in
-	 * fact using the power-down mode, we'd choose a 1/8 divider and an OCR1A
-	 * value of 19999. But there's no low power mode, so...
+	 * Look for a received packet.
 	 */
-	cli();
-	TCNT1 = 0;
-	OCR1A = 2499;
-	TCCR1A = 0;
-	TCCR1B = (1<<ICNC1)|(1<<CS11)|(1<<CS10);
-	TCCR1C = 0;
-	TIMSK1 = (1<<OCIE1A);
-	sei();
+	printf("HP:%d\n", radio.my_channel);
+	if (libradio_recv(chp, radio.my_channel)) {
+		printf("\nPacket RX! (tick:%u),len:%d\n", radio.ms_ticks, chp->offset);
+		for (i = 0; i < chp->offset;) {
+			pp = (struct packet *)&chp->payload[i];
+			printf("N%d,L%d,C%d\n", pp->node, pp->len, pp->cmd);
+			if (pp->len == 0)
+				break;
+			if (pp->node == 0 || pp->node == radio.my_node_id)
+				libradio_command(pp);
+			i += pp->len;
+		}
+	}
 }
-
-/*
- * These are required callbacks but they don't do anything.
- */
-void
-operate(struct packet *pp)
-{}
-
-int
-fetch_status(uchar_t status_type, uchar_t *cp)
-{
-	return(0);
-}
-
-void
-power_mode(uchar_t hi_flag)
-{}

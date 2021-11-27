@@ -36,9 +36,13 @@
 # the binaries. Nothing much to see, here. Move along, please!
 #
 DIRS=	lib control examples
+SRCS=	libradio.h lib/internal.h lib/*.[Sc] control/*.[hc] examples/main.c
 
 all:
 	@for d in $(DIRS); do $(MAKE) -C $$d all; done
 
 clean:
 	@for d in $(DIRS); do $(MAKE) -C $$d clean; done
+
+docs:
+	enscript -2 -T 4 -f Courier6 -r -o listing.pdf $(SRCS)

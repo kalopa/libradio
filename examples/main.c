@@ -119,7 +119,7 @@ main()
 		 * Call the libradio function to see if there's anything to do. This
 		 * routine only returns after a sleep or if the main clock has ticked.
 		 */
-		libradio_loop();
+		libradio_rxloop();
 		/*
 		 * For debugging purposes, look for the command sequence ^E\ to
 		 * enter bootstrap mode. Normally just calling the loop is enough

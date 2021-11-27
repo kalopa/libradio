@@ -37,7 +37,7 @@
 DEVICE=	atmega328p
 
 ASRCS=
-CSRCS=	main.c operate.c time.c
+CSRCS=	main.c command.c enqueue.c transmit.c input.c timer.c
 BIN=	radiocon
 FIRMWARE=radiocon.hex
 
@@ -48,7 +48,9 @@ EFUSE=0xff
 
 include ../avr.mk
 
+CFLAGS+=	-I../lib
+
 $(BIN):	$(OBJS) $(LIBRADIO)
 		$(CC) -o $(BIN) $(LDFLAGS) $(OBJS) $(LIBS)
 
-$(OBJS): ../libradio.h
+$(OBJS): ../libradio.h ../lib/internal.h control.h
