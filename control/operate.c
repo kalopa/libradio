@@ -40,8 +40,10 @@
 #include <libavr.h>
 
 #include "libradio.h"
+#include "control.h"
 
 #define NPRIORITIES				25
+#define MAX_CHANNELS			6
 
 #define IO_STATE_NEWLINE		0
 #define IO_STATE_WAITNL			1
@@ -66,16 +68,12 @@ uchar_t config_states[3] = {
 	LIBRADIO_CHSTATE_EMPTY
 };
 
-uchar_t		execute(struct packet *);
-void		send_time(struct channel *);
-void		enqueue();
-
 /*
  * Initialize operations. We send time stamps on each channel in and around the
  * even second, and twice per ten minute interval.
  */
 void
-opinit()
+oper_init()
 {
 	int i;
 

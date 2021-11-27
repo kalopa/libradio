@@ -46,6 +46,7 @@
 #include <libavr.h>
 
 #include "libradio.h"
+#include "control.h"
 
 /*
  * We have two application-specific commands, which allow the upstream
@@ -79,7 +80,8 @@ main()
 	UCSR0C = (1<<UCSZ01)|(1<<UCSZ00);
 	(void )fdevopen(sio_putc, sio_getc);
 	sei();
-	printf("\nMain radio control system v1.0.\n");
+	printf("\nMain radio control system v%d.%d.\n",
+					FW_VERSION_H, FW_VERSION_L);
 	report(RADIO_CMD_FIRMWARE);
 	/*
 	 * Initialize the radio circuitry. We don't really care about our category
@@ -98,11 +100,6 @@ main()
 		 */
 		if (!sio_iqueue_empty())
 			process_input();
-		/*
-		 * Check if we have anything to send.
-		 */
-		if (libradio_get_state() == LIBRADIO_STATE_ACTIVE)
-			do_transmit();
 		/*
 		 * Call the libradio function to see if there's anything to do on
 		 * the radio side of things. This routine only returns after a
@@ -207,5 +204,6 @@ report(uchar_t rtype)
 {
 	printf("<A%d:%d:", radio.my_node_id, rtype);
 	if (rtype == RADIO_CMD_FIRMWARE) {
+		printf("")
 	}
 }

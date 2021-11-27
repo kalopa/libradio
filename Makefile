@@ -35,7 +35,7 @@
 # Top-level Makefile. Just go down through the subdirectories and build
 # the binaries. Nothing much to see, here. Move along, please!
 #
-DIRS=	lib ctlr examples
+DIRS=	lib control examples
 
 all:
 	@for d in $(DIRS); do $(MAKE) -C $$d all; done

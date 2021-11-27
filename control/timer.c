@@ -38,6 +38,7 @@
 #include <libavr.h>
 
 #include "libradio.h"
+#include "control.h"
 
 /*
  * Initialize the time of day clock system. Here's the run-down of the usage:
