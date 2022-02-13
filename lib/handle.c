@@ -65,3 +65,12 @@ libradio_handle_packet(struct channel *chp)
 		}
 	}
 }
+
+/*
+ *
+ */
+void
+libradio_send_response(uchar_t chan, uchar_t addr, uchar_t len, uchar_t buffer[])
+{
+	printf("TX Response on C%dN%d, len: %d\n", chan, addr, len);
+}

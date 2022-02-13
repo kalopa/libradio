@@ -70,12 +70,12 @@ FIRMWARE?=firmware.hex
 
 # https://eleccelerator.com/fusecalc/fusecalc.php
 LFUSE?=0xef
-HFUSE?=0xcd
-EFUSE?=0xff
+HFUSE?=0xdf
+EFUSE?=0xfc
 
 ASFLAGS= -mmcu=$(DEVICE) -I$(AVR)
 CFLAGS=	-Wall -O2 -mmcu=$(DEVICE) -I$(AVR) -I..
-LDFLAGS=-nostartfiles -mmcu=$(DEVICE) -L$(AVR) -Wl,--section-start=.bstrap0=0x7e00,--defsym=__heap_end=0x80ffff
+LDFLAGS=-nostartfiles -u __vectors -mmcu=$(DEVICE) -L$(AVR) -Wl,--section-start=.bstrap0=0x7e00
 LIBS=	-L../lib -lradio -lavr.$(DEVICE) 
 
 all:	$(BIN)

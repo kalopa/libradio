@@ -69,6 +69,9 @@ libradio_power_up()
 	int addr;
 
 	addr = 0;
+	if (radio.radio_active)
+		return(0);
+	printf("Power up the radio.\n");
 	while ((len = pgm_read_byte(&radio_config[addr++])) != 0) {
 		for (i = 0; i < len; i++)
 			spi_data[i] = pgm_read_byte(&radio_config[addr++]);
@@ -86,6 +89,16 @@ libradio_power_up()
 	libradio_get_chip_status();
 	libradio_request_device_status();
 	libradio_get_chip_status();
+	printf("Active.\n");
 	radio.radio_active = 1;
 	return(0);
+}
+
+/*
+ * Power-down the radio.
+ */
+void
+libradio_power_down()
+{
+	radio.radio_active = 0;
 }

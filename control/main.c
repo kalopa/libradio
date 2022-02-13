@@ -62,43 +62,59 @@ main()
  	/*
 	 * Do the device initialization first...
 	 */
+	cli();
 	_setled(1);
 	clock_init();
-	/*
-	 * Set the baud rate and configure the USART. Our chosen baud rate is
-	 * 38.4kbaud (with a 16MHz crystal).
-	 */
-	cli();
-	UBRR0 = 25;
-	UCSR0B = (1<<RXCIE0)|(1<<UDRIE0)|(1<<RXEN0)|(1<<TXEN0);
-	UCSR0C = (1<<UCSZ01)|(1<<UCSZ00);
-	(void )fdevopen(sio_putc, sio_getc);
+	serial_init();
 	sei();
 	printf("\nMain radio control system v%d.%d.\n",
 					FW_VERSION_H, FW_VERSION_L);
-	report(0, RADIO_CMD_FIRMWARE);
+	send_status(0, 0, RADIO_STATUS_DYNAMIC);
+	send_status(0, 0, RADIO_STATUS_STATIC);
 	/*
 	 * Initialize the radio circuitry. We don't really care about our category
 	 * and ID number because we will get activated over the 1:1 serial line.
 	 * The EEPROM data however will be used for channel ownership information.
 	 */
 	libradio_init(CONTROL_C1, CONTROL_C2, CONTROL_N1, CONTROL_N2);
-	libradio_set_clock(10, 10);
+	libradio_set_clock(10, 160);
 	tx_init();
 	/*
 	 * Begin the main loop - every clock tick, call the radio loop.
 	 */
+	libradio_set_state(LIBRADIO_STATE_WARM);
 	while (1) {
-		libradio_wait_thread();
+		while (libradio_get_thread_run() == 0) {
+			/*
+			 * Handle serial data from our upstream overlords.
+			 */
+			if (!sio_iqueue_empty())
+				process_input();
+			_sleep();
+		}
 		/*
 		 * Run down through the list of channels and see if anything needs
 		 * to be transmitted. This is based on the priority.
 		 */
 		tx_check_queues();
-		/*
-		 * Handle serial data from our upstream overlords.
-		 */
-		if (!sio_iqueue_empty())
-			process_input();
 	}
+}
+
+/*
+ * These are required callbacks but they don't do anything.
+ *
+ * Handle a non-default command.
+ */
+void
+operate(struct packet *pp)
+{
+}
+
+/*
+ * Fetch the status block and report it back.
+ */
+int
+fetch_status(uchar_t status_type, uchar_t *cp, int maxlen)
+{
+	return(0);
 }

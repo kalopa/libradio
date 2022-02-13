@@ -39,6 +39,9 @@
 #define FW_VERSION_H	2
 #define FW_VERSION_L	3
 
+#define BATTERY_LOW		658
+#define BATTERY_OK		800
+
 #define MAX_RADIO_CHANNELS	6
 
 extern struct channel		channels[MAX_RADIO_CHANNELS];
@@ -47,6 +50,7 @@ extern struct channel		channels[MAX_RADIO_CHANNELS];
  * Prototypes.
  */
 void	clock_init();
+void	serial_init();
 void	tx_init();
 void	tx_check_queues();
 void	process_input();
@@ -54,5 +58,5 @@ uchar_t	mycommand(struct packet *);
 void	send_time(struct channel *);
 void	enqueue(struct channel *, struct packet *);
 void	set_channel(uchar_t, uchar_t);
-void	report(uchar_t, uchar_t);
-void	status(uchar_t);
+void	send_status(uchar_t, uchar_t, uchar_t);
+void	response(uchar_t);

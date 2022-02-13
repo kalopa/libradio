@@ -138,8 +138,8 @@ spi_rxpacket(struct channel *chp)
 
 	_setss(1);
 	spi_byte(SI4463_READ_RX_FIFO);
-	myticks = spi_byte(0);
-	myticks |= (spi_byte(0) << 8);
+	myticks = spi_byte(0) << 8;
+	myticks |= spi_byte(0);
 	chp->offset = radio.rx_fifo - 2;
 	printf("OFF:%d\n", chp->offset);
 	for (i = 0, cp = chp->payload; i < chp->offset; i++)
@@ -169,8 +169,8 @@ spi_txpacket(struct channel *chp)
 	cli();
 	myticks = radio.ms_ticks;
 	sei();
-	spi_byte(myticks & 0xff);
 	spi_byte((myticks >> 8) & 0xff);
+	spi_byte(myticks & 0xff);
 	/*
 	 * Send out the packet length, minus the time stamp we've already sent.
 	 * Send nulls if we've run out of data.

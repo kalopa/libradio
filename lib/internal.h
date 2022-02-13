@@ -145,5 +145,6 @@ void	spi_txpacket(struct channel *);
 void	libradio_set_song(uchar_t);
 
 void	libradio_command(struct packet *);
+void	libradio_send_response(uchar_t, uchar_t, uchar_t, uchar_t []);
 
 void	_setss(uchar_t);

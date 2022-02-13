@@ -45,11 +45,12 @@
  */
 #define LIBRADIO_STATE_STARTUP		0
 #define LIBRADIO_STATE_ERROR		1
-#define LIBRADIO_STATE_COLD			2
-#define LIBRADIO_STATE_WARM			3
-#define LIBRADIO_STATE_LISTEN		4
-#define LIBRADIO_STATE_ACTIVE		5
-#define NLIBRADIO_STATES			6
+#define LIBRADIO_STATE_LOW_BATTERY	2
+#define LIBRADIO_STATE_COLD			3
+#define LIBRADIO_STATE_WARM			4
+#define LIBRADIO_STATE_LISTEN		5
+#define LIBRADIO_STATE_ACTIVE		6
+#define NLIBRADIO_STATES			7
 
 #define RADIO_CMD_NOOP				0
 #define RADIO_CMD_FIRMWARE			1
@@ -60,8 +61,13 @@
 #define RADIO_CMD_SET_DATE			6
 #define RADIO_CMD_READ_EEPROM		7
 #define RADIO_CMD_WRITE_EEPROM		8
+#define RADIO_STATUS_RESPONSE		9
+#define RADIO_EEPROM_RESPONSE		10
 
 #define RADIO_CMD_ADDITIONAL_BASE	16
+
+#define RADIO_STATUS_DYNAMIC		0
+#define RADIO_STATUS_STATIC			1
 
 /*
  * Packet to be transmitted. Multiple packets are folded up into one
@@ -110,13 +116,15 @@ void	libradio_init(uchar_t, uchar_t, uchar_t, uchar_t);
 uchar_t	libradio_get_state();
 void	libradio_set_state(uchar_t);
 void	libradio_set_clock(uchar_t, uchar_t);
-void	libradio_wait_thread();
+int		libradio_get_thread_run();
+int		libradio_timer_fired();
 void	libradio_rxloop();
 void	libradio_command(struct packet *);
 
 uchar_t	libradio_recv(struct channel *, uchar_t);
 uchar_t	libradio_send(struct channel *, uchar_t);
 int		libradio_power_up();
+void	libradio_power_down();
 int		libradio_request_device_status();
 void	libradio_get_property(uint_t, uchar_t);
 void	libradio_set_property();
@@ -139,5 +147,5 @@ void	libradio_handle_packet(struct channel *);
  * low power modes.
  */
 void	operate(struct packet *);
-int		fetch_status(uchar_t, uchar_t *);
+int		fetch_status(uchar_t, uchar_t [], int);
 void	power_mode(uchar_t);

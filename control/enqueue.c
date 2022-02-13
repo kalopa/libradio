@@ -58,7 +58,7 @@ enqueue(struct channel *chp, struct packet *pp)
 		 * Instead, execute the command. Also, free up the channel buffer
 		 * if this is the only transmission.
 		 */
-		status(mycommand(pp));
+		response(mycommand(pp));
 		chp->state = (chp->offset == 0) ?
 						LIBRADIO_CHSTATE_EMPTY : LIBRADIO_CHSTATE_TRANSMIT;
 		return;
@@ -91,10 +91,10 @@ enqueue(struct channel *chp, struct packet *pp)
 			if (chp->priority < 0xfc)
 				chp->priority++;
 		}
-		status(1);
+		response(0);
 	} else {
 		chp->state = LIBRADIO_CHSTATE_EMPTY;
-		status(0);
+		response(2);
 	}
 }
 

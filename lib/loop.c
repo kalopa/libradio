@@ -56,7 +56,8 @@ libradio_rxloop()
 	 * First things first - wait for the clock timer to kick us into doing
 	 * something. The sleep() function will pause the CPU until the next IRQ.
 	 */
-	libradio_wait_thread();
+	while (libradio_get_thread_run() == 0)
+		_sleep();
 	/*
 	 * Depending on what state we're in, do something useful. For a lot of
 	 * these states, not much happens and all we do is move to the next

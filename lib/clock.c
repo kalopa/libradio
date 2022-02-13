@@ -47,8 +47,11 @@
 /*
  * LED "songs" for the first six states.
  */
-uint_t	songs[NLIBRADIO_STATES] = {0xffff, 0x5555, 0x1, 0x3, 0xff, 0xf7};
-uchar_t	thread_ok;
+uint_t		songs[NLIBRADIO_STATES] = {0xffff, 0x3333, 0x0, 0x1, 0x3, 0xff, 0xf7};
+
+uint_t		timer_count;
+uchar_t		thread_ok;
+uchar_t		timer_fired;
 
 /*
  * This function is called every clock tick (every 10ms) or ten times
@@ -65,6 +68,11 @@ clocktick()
 	uchar_t ledf;
 
 	/*
+	 * Update the main LED song, one note at a time...
+	 */
+	_setled(ledf = (radio.heart_beat & 0x8000) ? 1 : 0);
+	radio.heart_beat = (radio.heart_beat << 1) | ledf;
+	/*
 	 * Only track the time of day if we've been given some sort
 	 * of useful date value via external comms.
 	 */
@@ -75,29 +83,48 @@ clocktick()
 		}
 	}
 	/*
-	 * Update the main LED song, one note at a time...
-	 */
-	_setled(ledf = (radio.heart_beat & 0x8000) ? 1 : 0);
-	radio.heart_beat = (radio.heart_beat << 1) | ledf;
-	/*
 	 * Kick the main thread, if appropriate.
 	 */
 	if (radio.main_ticks != 0 && --radio.main_ticks == 0) {
 		thread_ok = 1;
 		radio.main_ticks = 1;
 	}
+	/*
+	 * Increment the seconds counter in case the main loop needs to do
+	 * periodic work (like check the battery).
+	 */
+	if ((timer_count += radio.fast_period) >= 100) {
+		timer_count = 0;
+		timer_fired = 1;
+	}
 }
 
 /*
  * Wait for the main tick to occur. Called from main code (not ISR).
  */
-void
-libradio_wait_thread()
+int
+libradio_get_thread_run()
 {
-	while (thread_ok == 0)
-		_sleep();
+	int old_value = thread_ok;
+
 	thread_ok = 0;
-	putchar('+');
+	return(old_value);
+}
+
+/*
+ * Wait for a thread run.
+ */
+
+/*
+ * Check to see if the timer has fired.
+ */
+int
+libradio_timer_fired()
+{
+	uchar_t old_value = timer_fired;
+
+	timer_fired = 0;
+	return(old_value);
 }
 
 /*
@@ -110,4 +137,5 @@ libradio_set_song(uchar_t new_state)
 		radio.heart_beat = songs[new_state];
 	else
 		radio.heart_beat = songs[LIBRADIO_STATE_ACTIVE];
+	printf("NEWHB:%x/%d\n", radio.heart_beat, new_state);
 }

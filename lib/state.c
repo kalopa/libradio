@@ -105,9 +105,9 @@ libradio_set_state(uchar_t new_state)
 
 	case LIBRADIO_STATE_ERROR:
 		/*
-		 * Some sort of fatal error. Stay in this state for ten minutes.
+		 * Some sort of fatal error. Stay in this state for a minute.
 		 */
-		wait_ticks = 10*60*1000L / (long )radio.fast_period;
+		wait_ticks = 60*1000L / (long )radio.fast_period;
 		break;
 
 	default:
@@ -116,6 +116,7 @@ libradio_set_state(uchar_t new_state)
 		 * timeout for 60,000 passes through the loop (whatever that is
 		 * in seconds).
 		 */
+		power_mode(1);
 		radio.timeout = 60000;
 		break;
 	}
@@ -123,5 +124,4 @@ libradio_set_state(uchar_t new_state)
 	radio.main_ticks = (int )wait_ticks;
 	radio.state = new_state;
 	sei();
-	printf("RS:%d,mt%d\n", radio.state, radio.main_ticks);
 }

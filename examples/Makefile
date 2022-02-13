@@ -42,11 +42,6 @@ ASRCS=
 CSRCS=	main.c
 BIN=	oiltank
 
-# https://eleccelerator.com/fusecalc/fusecalc.php
-LFUSE=0xef
-HFUSE=0xdf
-EFUSE=0xff
-
 include ../avr.mk
 
 $(BIN):	$(OBJS) $(LIBRADIO)

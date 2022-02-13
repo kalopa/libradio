@@ -54,6 +54,9 @@
 #include <libavr.h>
 #include "libradio.h"
 
+#define FW_VERSION_H	1
+#define FW_VERSION_L	0
+
 /*
  * The two 8-bit codes define an overall category of device and a subcategory
  * but really they're just two bytes which need to be unique for this class
@@ -62,14 +65,21 @@
 #define OILTANK_CAT1		0x7f				/* Monitoring device */
 #define OILTANK_CAT2		0x01				/* Tank level monitor */
 
+void	get_battery_voltage();
+void	get_oil_level();
+
+uchar_t		mynum1;
+uchar_t		mynum2;
+int			battery_voltage;
+int			oil_level;
+
 /*
  *
  */
 int
 main()
 {
-	int ch, bs_state;
-	uchar_t num1, num2;
+	int ch, tlsecs, bs_state;
 
 	/*
 	 * Timer1 is the workhorse. It is set up with a divide-by-64 to free-run
@@ -87,11 +97,13 @@ main()
 	 */
 	cli();
 	UBRR0 = 25;
-	UCSR0B = (1<<RXCIE0)|(1<<UDRIE0)|(1<<RXEN0)|(1<<TXEN0);
+	/*UCSR0B = (1<<RXCIE0)|(1<<UDRIE0)|(1<<RXEN0)|(1<<TXEN0);*/
+	UCSR0B = (1<<RXCIE0)|(1<<RXEN0)|(1<<TXEN0);
 	UCSR0C = (1<<UCSZ01)|(1<<UCSZ00);
 	(void )fdevopen(sio_putc, sio_getc);
 	sei();
-	printf("\nOil tank monitor v1.0. MCUSR:%x\n", MCUSR);
+	printf("\nOil tank monitor v%d.%d.\n", FW_VERSION_H, FW_VERSION_L);
+	printf("MCUSR:%x\n", MCUSR);
 	/*
 	 * Initialize the radio circuitry. First look for our unique ID in EEPROM
 	 * and default to 0/1 if it's not there. Then call the libradio init
@@ -99,27 +111,38 @@ main()
 	 * 10Hz) rather than the usual default of 10ms, and our low-power clock
 	 * period is 1.6s.
 	 */
-	num1 = eeprom_read_byte((const unsigned char *)0);
-	num2 = eeprom_read_byte((const unsigned char *)1);
-	if (num1 == 0xff || num2 == 0xff) {
-		num1 = 0;
-		num2 = 1;
-		eeprom_write_byte((unsigned char *)0, num1);
-		eeprom_write_byte((unsigned char *)1, num2);
+	mynum1 = eeprom_read_byte((const unsigned char *)0);
+	mynum2 = eeprom_read_byte((const unsigned char *)1);
+	if (mynum1 == 0xff || mynum2 == 0xff) {
+		mynum1 = 0;
+		mynum2 = 1;
+		eeprom_write_byte((unsigned char *)0, mynum1);
+		eeprom_write_byte((unsigned char *)1, mynum2);
 	}
-	printf("IDENT %d/%d\n", num1, num2);
-	libradio_init(OILTANK_CAT1, OILTANK_CAT2, num1, num2);
+	printf("IDENT %d/%d\n", mynum1, mynum2);
+	libradio_init(OILTANK_CAT1, OILTANK_CAT2, mynum1, mynum2);
 	libradio_set_clock(10, 160);
 	/*
 	 * Begin the main loop - every clock tick, call the radio loop.
 	 */
-	bs_state = 0;
+	tlsecs = bs_state = 0;
+	get_battery_voltage();
+	get_oil_level();
 	while (1) {
 		/*
 		 * Call the libradio function to see if there's anything to do. This
 		 * routine only returns after a sleep or if the main clock has ticked.
 		 */
 		libradio_rxloop();
+		/*
+		 * If the timer has fired, then one second has elapsed. Every five
+		 * minutes, check the battery and the oil level.
+		 */
+		if (libradio_timer_fired() && ++tlsecs >= 300) {
+			get_battery_voltage();
+			get_oil_level();
+			tlsecs = 0;
+		}
 		/*
 		 * For debugging purposes, look for the command sequence ^E\ to
 		 * enter bootstrap mode. Normally just calling the loop is enough
@@ -181,8 +204,53 @@ power_mode(uchar_t hi_flag)
  * Report oiltank status back to the requested receiver.
  */
 int
-fetch_status(uchar_t status_type, uchar_t *cp)
+fetch_status(uchar_t status_type, uchar_t status[], int maxlen)
 {
-	/* FIXME: Add oil tank measurement here. */
+	if (maxlen < 6)
+		return(0);
+	switch (status_type) {
+	case RADIO_STATUS_DYNAMIC:
+		status[0] = (battery_voltage >> 8) & 0xff;
+		status[1] = (battery_voltage & 0xff);
+		status[2] = libradio_get_state();
+		status[3] = (oil_level >> 8) & 0xff;
+		status[4] = (oil_level & 0xff);
+		return(5);
+
+	case RADIO_STATUS_STATIC:
+		status[0] = OILTANK_CAT1;
+		status[1] = OILTANK_CAT2;
+		status[2] = mynum1;
+		status[3] = mynum2;
+		status[4] = FW_VERSION_H;
+		status[5] = FW_VERSION_L;
+		return(6);
+	}
 	return(0);
+}
+
+/*
+ * Return the battery voltage as an integer between 0 and 1023. This is
+ * computed by reading the A/D value after the voltage divider circuit.
+ */
+void
+get_battery_voltage()
+{
+	battery_voltage = analog_read(3);
+	printf("BV=%d\n", battery_voltage);
+}
+
+/*
+ * Read the oil tank level. This sensor is comprised of a one-shot ultrasonic
+ * sensor which "pings" the oil level from above, and measures the time to a
+ * response. With a rough approximation of the speed of sound in air, it is
+ * possible to compute the oil level in the tank. Note that this function
+ * just returns the raw sample data and some higher-level code will try and
+ * figure out the actual level.
+ */
+void
+get_oil_level()
+{
+	oil_level = 800;
+	printf("Oil=%d\n", oil_level);
 }

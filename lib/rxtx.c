@@ -31,8 +31,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * This file holds the send() function which will actually send a packet
- * (or packets) of data over the air.
+ * Receive a packet over the wire, if one is available. It assumes
+ * that we are already on the correct channel and that the radio is in
+ * RECEIVE mode. If not, it changes the configuration of the radio ready
+ * to receive, which will probably happen before the next call.
  */
 #include <stdio.h>
 #include <avr/io.h>
@@ -42,6 +44,52 @@
 
 #include "libradio.h"
 #include "internal.h"
+
+/*
+ * Receive data from the radio receiver. Note that if it is still powering
+ * up then we'll need to wait a bit. Likewise, if the radio is asleep, we
+ * will need to bring it back online.
+ */
+uchar_t
+libradio_recv(struct channel *chp, uchar_t channo)
+{
+	uchar_t ret = 0;
+
+	chp->offset = 0;
+	if (!radio.radio_active && libradio_power_up() < 0)
+		return(0);
+	/*
+	 * First up, check the RX fifo to see if we have a packet.
+	 */
+	libradio_get_int_status();
+	libradio_get_fifo_info(0);
+	if (radio.rx_fifo >= SI4463_PACKET_LEN) {
+		/*
+		 * There's at least a packet. Go get it!
+		 */
+		spi_rxpacket(chp);
+		ret = 1;
+	}
+	if (libradio_request_device_status() != SI4463_STATE_READY &&
+					radio.curr_channel == channo)
+		return(ret);
+	/*
+	 * We're in a READY state. Let's get receiving...
+	 */
+	spi_data[0] = SI4463_START_RX;
+	spi_data[1] = channo;
+	spi_data[2] = 0;		/* CONDITION: Start immediately */
+	spi_data[3] = 0;		/* RXLen(hi) */
+	spi_data[4] = SI4463_PACKET_LEN;
+	spi_data[5] = SI4463_STATE_NOCHANGE;
+	spi_data[6] = SI4463_STATE_READY;
+	spi_data[7] = SI4463_STATE_READY;
+	spi_send(8, 0);
+	radio.saw_rx = 1;
+	radio.npacket_rx++;
+	radio.curr_channel = channo;
+	return(ret);
+}
 
 /*
  * Transmit data via the radio transmitter. Note that if it is still powering
@@ -69,5 +117,6 @@ libradio_send(struct channel *chp, uchar_t channo)
 	spi_data[3] = 0;
 	spi_data[4] = SI4463_PACKET_LEN;
 	spi_send(5, 0);
+	radio.npacket_tx++;
 	return(1);
 }

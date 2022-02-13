@@ -68,21 +68,32 @@ tx_init()
 void
 tx_check_queues()
 {
-	int channo;
+	int channo, modulo;
 	struct channel *chp, *nchp = NULL;
+	static int last_modulo = 0;
 
+	if (radio.state < LIBRADIO_STATE_LISTEN)
+		return;
 	/*
 	 * First off, send a time stamp on each of the active channels regardless
 	 * of anything else.
 	 */
-	if ((radio.ms_ticks % 1000) == 0) {
+	modulo = radio.ms_ticks % 1000;
+	if (last_modulo > modulo) {
+		last_modulo = modulo;
+		/*
+		 * Millisecond clock has wrapped around. Time to Tx a SET TIME.
+		 */
+		printf("ticks!%u\n", TCCR1B);
 		channo = (radio.ms_ticks / 1000) % MAX_RADIO_CHANNELS;
 		chp = &channels[channo];
+		printf("channo%d,S%d,off:%d\n", channo, chp->state, chp->offset);
 		if (chp->state != LIBRADIO_CHSTATE_DISABLED &&
-									chp->state == LIBRADIO_CHSTATE_READ &&
+									chp->state != LIBRADIO_CHSTATE_READ &&
 									chp->offset < (MAX_FIFO_SIZE - 8)) {
 			struct packet *pp;
 
+			printf("Ichp->state:%d (off%d)\n", chp->state, chp->offset);
 			/*
 			 * Send a "tens of minutes" time packet.
 			 */
@@ -102,6 +113,7 @@ tx_check_queues()
 		 * No time of day packet so choose the highest priority for the
 		 * transmission. If we can't find a packet to send, we're done.
 		 */
+		last_modulo = modulo;
 		for (channo = 0, chp = channels; channo < MAX_RADIO_CHANNELS;
 														channo++, chp++) {
 			if (chp->priority == 0 || chp->state != LIBRADIO_CHSTATE_TRANSMIT)
@@ -111,17 +123,23 @@ tx_check_queues()
 		}
 		if (nchp == NULL)
 			return;
+		printf("Echp->state:%d (off%d)\n", chp->state, chp->offset);
+		chp = nchp;
 	}
 	/*
 	 * We have a channel ready for transmission. Send it now...
 	 */
 	printf("TX: ch%d (len:%d)\n", channo, chp->offset);
+	if (chp->offset >= MAX_FIFO_SIZE)
+		_bootstrap();
 	chp->payload[chp->offset++] = 0;
 	chp->payload[chp->offset++] = 0;
 	if (libradio_send(chp, channo) != 0) {
+		printf("TXGood.\n");
 		chp->state = LIBRADIO_CHSTATE_EMPTY;
 		chp->priority = 0;
 	}
+	printf("TXBack. %d/%d\n", chp->state, radio.state);
 	/*
 	 * Now increment the priority of the remaining channels to prevent them
 	 * getting locked out by busy channels at a higher priority.
@@ -131,4 +149,5 @@ tx_check_queues()
 		if (chp->state == LIBRADIO_CHSTATE_TRANSMIT && chp->priority < 0xfc)
 			chp->priority += 2;
 	}
+	printf("Done.\n");
 }

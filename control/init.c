@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-21, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,11 +29,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * All the clock timer functionality for the main controller is embedded
- * in this file. The actual interrupt handler is in the library.
+ * Initialize things (like the clock and the serial I/O).
  */
 #include <stdio.h>
 #include <avr/io.h>
+#include <string.h>
 
 #include <libavr.h>
 
@@ -55,29 +55,46 @@ clock_init()
 	 * fact using the power-down mode, we'd choose a 1/8 divider and an OCR1A
 	 * value of 19999. But there's no low power mode, so...
 	 */
-	cli();
 	TCNT1 = 0;
 	OCR1A = 2499;
 	TCCR1A = 0;
-	TCCR1B = (1<<ICNC1)|(1<<CS11)|(1<<CS10);
+	TCCR1B = (1<<WGM12)|(1<<CS11)|(1<<CS10);
 	TCCR1C = 0;
 	TIMSK1 = (1<<OCIE1A);
-	sei();
 }
 
 /*
- * These are required callbacks but they don't do anything.
+ * Initialize the serial port.
  */
 void
-operate(struct packet *pp)
-{}
-
-int
-fetch_status(uchar_t status_type, uchar_t *cp)
+serial_init()
 {
-	return(0);
+	/*
+	 * Set the baud rate and configure the USART. Our chosen baud rate is
+	 * 38.4kbaud (with a 16MHz crystal).
+	 */
+	UBRR0 = 25;
+	UCSR0B = (1<<RXCIE0)|(1<<UDRIE0)|(1<<RXEN0)|(1<<TXEN0);
+	UCSR0C = (1<<UCSZ01)|(1<<UCSZ00);
+	//sio_set_direct_mode(1);
+	(void )fdevopen(sio_putc, sio_getc);
 }
 
+/*
+ * Set low or high power mode, accordingly.
+ */
 void
 power_mode(uchar_t hi_flag)
-{}
+{
+	cli();
+	/*
+	 * Fast has CS1n = 3 (/64) and slow CS1n = 5 (/1024).
+	 */
+	if (hi_flag)
+		TCCR1B = (1<<WGM12)|(1<<CS11)|(1<<CS10);
+	else
+		TCCR1B = (1<<WGM12)|(1<<CS12)|(1<<CS10);
+ 	TCCR1C = 0;
+	TIMSK1 = (1<<OCIE1A);
+	sei();
+}

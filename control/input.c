@@ -110,7 +110,7 @@ process_input()
 			/*
 			 * Invalid channel - abort!
 			 */
-			status(0);
+			response(1);
 			break;
 		}
 		curr_chp = &channels[value];
@@ -122,7 +122,7 @@ process_input()
 				 * Too much data for this channel. Abort!
 				 */
 				curr_chp->state = LIBRADIO_CHSTATE_TRANSMIT;
-				status(0);
+				response(1);
 				break;
 			}
 		}
@@ -133,7 +133,7 @@ process_input()
 		break;
 
 	case STATE(IO_STATE_WAITCHAN, 'R'):
-		//_reset();
+		_reset();
 		break;
 
 	case STATE(IO_STATE_WAITNODE, '0'):
@@ -194,7 +194,7 @@ process_input()
 			 * Too much data for this channel. Abort! Note that we reserve
 			 * two bytes to specify node:0,len:0 at the end.
 			 */
-			status(0);
+			response(1);
 			break;
 		}
 		curr_pp->data[curr_pp->len++] = value;
@@ -207,7 +207,7 @@ process_input()
 
 	default:
 		if (state != IO_STATE_WAITNL)
-			status(0);
+			response(1);
 		break;
 	}
 }
@@ -216,10 +216,11 @@ process_input()
  *
  */
 void
-status(uchar_t success)
+response(uchar_t code)
 {
-	putchar('<');
-	putchar(success ? '+' : '-');
-	putchar('\n');
+	if (code == 0)
+		printf("<+\n");
+	else
+		printf("<-%d\n", code);
 	state = IO_STATE_WAITNL;
 }

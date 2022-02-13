@@ -94,7 +94,7 @@ clock_irq:
 	push	r19
 	push	r26
 	push	r27					; Save the temporary regs
-	rcall	clocktick			; Call the main clock tick
+	call	clocktick			; Call the main clock tick
 	pop		r27					; Restore the registers
 	pop		r26
 	pop		r19
@@ -115,6 +115,11 @@ radio_irq:
 spi_irq:
 	reti
 	.endfunc
+;
+; Define the heap_end for malloc()
+	.section .init0,"ax",@progbits
+	.weak	__heap_end
+	.set	__heap_end, 0
 ;
 ; void _ioinit();
 ;

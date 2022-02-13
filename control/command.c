@@ -65,13 +65,12 @@
 uchar_t
 mycommand(struct packet *pp)
 {
-	int i, len, addr, rchan, rnode;
-
+	int i, len, addr, rchan, rnode, rtype;
 
 	switch (pp->cmd) {
 	case RADIO_CMD_NOOP:
+	case RADIO_CMD_FIRMWARE:
 	case RADIO_CMD_DEACTIVATE:
-	case RADIO_CMD_SET_TIME:
 	case RADIO_CMD_SET_DATE:
 	case RADIO_CMD_WRITE_EEPROM:
 		/*
@@ -89,7 +88,27 @@ mycommand(struct packet *pp)
 		printf("Master Activate!\n");
 		radio.my_channel = pp->data[0];
 		radio.my_node_id = pp->data[1];
-		libradio_set_state(LIBRADIO_STATE_ACTIVE);
+		if (libradio_power_up() == 0) {
+			libradio_set_state(LIBRADIO_STATE_ACTIVE);
+			channels[radio.my_channel].state = LIBRADIO_CHSTATE_TRANSMIT;
+		} else {
+			printf("Radio power-up failed.\n");
+			return(3);
+		}
+		break;
+
+	case RADIO_CMD_SET_TIME:
+		/*
+		 * Set the "tens of minutes" value thus enabling the real-time clock.
+		 * We handle this differently to the normal routine because the
+		 * millisecond timer is also sent (via the serial port). Normally this
+		 * is implied in the packet.
+		 */
+		if (pp->len != 3)
+			break;
+		radio.ms_ticks = (pp->data[0] << 8 | pp->data[1]);
+		radio.tens_of_minutes = pp->data[2];
+		printf(">> Ctlr Time:%u/%u\n", radio.ms_ticks, radio.tens_of_minutes);
 		break;
 
 	case RADIO_CMD_STATUS:
@@ -100,7 +119,8 @@ mycommand(struct packet *pp)
 			break;
 		rchan = pp->data[0];
 		rnode = pp->data[1];
-		report(rchan, pp->cmd);
+		rtype = pp->data[2];
+		send_status(rchan, rnode, rtype);
 		break;
 
 	case RADIO_CMD_READ_EEPROM:
@@ -113,7 +133,7 @@ mycommand(struct packet *pp)
 		rchan = pp->data[0];
 		rnode = pp->data[1];
 		len = pp->data[2];
-		addr = (pp->data[4] << 8 | pp->data[3]);
+		addr = (pp->data[3] << 8 | pp->data[4]);
 		printf("RChan/Node %d:%d, len:%d, addr:%d\n", rchan, rnode, len, addr);
 		printf("<%c:%d:", rchan + 'A', rnode);
 		for (i = 0; i < len; i++, addr++) {
@@ -138,22 +158,48 @@ mycommand(struct packet *pp)
 		break;
 
 	default:
-		return(0);
+		return(1);
 	}
-	return(1);
+	return(0);
 }
 
 /*
  *
  */
 void
-report(uchar_t rchan, uchar_t rtype)
+send_status(uchar_t rchan, uchar_t rnode, uchar_t stype)
 {
-	printf("<%c%d:%d:", rchan + 'A', radio.my_node_id, rtype);
-	switch (rtype) {
-	case RADIO_CMD_STATUS:
-		printf("%d,%d,%d,%u,%u\n", FW_VERSION_H, FW_VERSION_L,
-						radio.state, radio.npacket_rx, radio.npacket_tx);
+	int i, bv, len = 0;
+	uchar_t status[10];
+
+	switch (stype) {
+	case RADIO_STATUS_DYNAMIC:
+		bv = analog_read(3);
+		printf("BV:%d\n", bv);
+		status[0] = radio.state;
+		status[1] = (bv >> 8) & 0xff;
+		status[2] = (bv & 0xff);
+		status[3] = (radio.ms_ticks >> 8) & 0xff;
+		status[4] = (radio.ms_ticks & 0xff);
+		status[5] = (radio.npacket_rx >> 8) & 0xff;
+		status[6] = (radio.npacket_rx & 0xff);
+		status[7] = (radio.npacket_tx >> 8) & 0xff;
+		status[8] = (radio.npacket_tx & 0xff);
+		len = 9;
+		break;
+
+	case RADIO_STATUS_STATIC:
+		status[0] = CONTROL_C1;
+		status[1] = CONTROL_C2;
+		status[2] = CONTROL_N1;
+		status[3] = CONTROL_N2;
+		status[4] = FW_VERSION_H;
+		status[5] = FW_VERSION_L;
+		len = 6;
 		break;
 	}
+	printf("<%c%d:%d:%d", rchan+'A', radio.my_node_id, RADIO_STATUS_RESPONSE, stype);
+	for (i = 0; i < len; i++)
+		printf(",%u", status[i]);
+	putchar('\n');
 }

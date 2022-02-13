@@ -37,20 +37,15 @@
 DEVICE=	atmega328p
 
 ASRCS=
-CSRCS=	main.c command.c enqueue.c transmit.c input.c timer.c
+CSRCS=	main.c init.c command.c enqueue.c transmit.c input.c
 BIN=	radiocon
 FIRMWARE=radiocon.hex
-
-# https://eleccelerator.com/fusecalc/fusecalc.php
-LFUSE=0xef
-HFUSE=0xdf
-EFUSE=0xff
 
 include ../avr.mk
 
 CFLAGS+=	-I../lib
 
 $(BIN):	$(OBJS) $(LIBRADIO)
-		$(CC) -o $(BIN) $(LDFLAGS) $(OBJS) $(LIBS)
+	$(CC) -o $(BIN) $(LDFLAGS) $(OBJS) $(LIBS)
 
 $(OBJS): ../libradio.h ../lib/internal.h control.h

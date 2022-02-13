@@ -45,6 +45,10 @@
 #include "libradio.h"
 #include "internal.h"
 
+#define MAX_RESPONSE_SIZE		16
+
+uchar_t	statusbuffer[MAX_RESPONSE_SIZE];
+
 /*
  * Handle a received command from the radio. We deal with the lower set of
  * commands (0->7 currently) internally, and pass any other commands on up
@@ -53,17 +57,20 @@
 void
 libradio_command(struct packet *pp)
 {
-	int i, len, addr, rchan, rnode;
+	int i, len, addr, rchan;
 
 	printf("Received a command: %d (len:%d)\n", pp->cmd, pp->len);
 	switch (pp->cmd) {
 	case RADIO_CMD_NOOP:
+	case RADIO_STATUS_RESPONSE:
+	case RADIO_EEPROM_RESPONSE:
 		break;
 
 	case RADIO_CMD_FIRMWARE:
 		/*
-		 * Do a firmware update. Ignore - for now.
+		 * Do a firmware update.
 		 */
+		_bootstrap();
 		break;
 
 	case RADIO_CMD_STATUS:
@@ -73,11 +80,13 @@ libradio_command(struct packet *pp)
 		if (pp->len != 3)
 			break;
 		rchan = pp->data[0];
-		rnode = pp->data[1];
+		addr = pp->data[1];
 		i = pp->data[2];
-		printf(">> Send status type %d to %d:%d\n", i, rchan, rnode);
-		//fetch_status(i, &statusbuffer);
-		//send...
+		printf(">> Send status type %d to %d\n", i, rchan);
+		if ((len = fetch_status(i, statusbuffer, MAX_RESPONSE_SIZE)) > 0) {
+			printf("Response len: %d\n", len);
+			libradio_send_response(rchan, addr, len, statusbuffer);
+		}
 		break;
 
 	case RADIO_CMD_ACTIVATE:
@@ -116,7 +125,7 @@ libradio_command(struct packet *pp)
 		if (pp->len != 1)
 			break;
 		radio.tens_of_minutes = pp->data[0];
-		printf(">> Set Tens of Minutes:%u\n", radio.tens_of_minutes);
+		printf(">> Set Time: %u\n", radio.tens_of_minutes);
 		break;
 
 	case RADIO_CMD_SET_DATE:
@@ -126,7 +135,7 @@ libradio_command(struct packet *pp)
 		 */
 		if (pp->len != 2)
 			break;
-		radio.date = (pp->data[1] << 8 | pp->data[0]);
+		radio.date = (pp->data[0] << 8 | pp->data[1]);
 		printf(">> Set Date: %u\n", radio.date);
 		break;
 
@@ -135,32 +144,28 @@ libradio_command(struct packet *pp)
 		 * Read up to 16 bytes of EEPROM data. The result is saved in a
 		 * packet buffer and transmitted on the specified channel.
 		 */
-		if (pp->len != 5)
+		if (pp->len != 4)
 			break;
 		printf(">> Read EEPROM...\n");
 		rchan = pp->data[0];
-		rnode = pp->data[1];
-		len = pp->data[2];
-		addr = (pp->data[4] << 8 | pp->data[3]);
-		printf("RChan/Node %d:%d, len:%d, addr:%d\n", rchan, rnode, len, addr);
-#if 0
+		len = pp->data[1];
+		addr = (pp->data[2] << 8 | pp->data[3]);
+		printf("RChan %d, len:%d, addr:%d\n", rchan, len, addr);
 		for (i = 0; i < len; i++, addr++)
 			statusbuffer[i] = eeprom_read_byte((const unsigned char *)addr);
-		//send...
-#endif
+		libradio_send_response(rchan, addr, len, statusbuffer);
 		break;
 
 	case RADIO_CMD_WRITE_EEPROM:
 		/*
 		 * Write up to 16 bytes of EEPROM data.
 		 */
-		if (pp->len < 4 || pp->len > 19)
+		if (pp->len < 3 || pp->len > 19)
 			break;
-		printf(">> Write EEPROM (%d bytes)...\n", pp->len - 3);
-		len = pp->data[0];
-		addr = (pp->data[2] << 8 | pp->data[1]);
-		printf("Len: %d, addr: %d\n", len, addr);
-		for (i = 0; i < len; i++, addr++)
+		printf(">> Write EEPROM (%d bytes)...\n", pp->len - 2);
+		addr = (pp->data[0] << 8 | pp->data[1]);
+		printf("Addr: %d\n", addr);
+		for (i = 0; i < (pp->len - 2); i++, addr++)
 			eeprom_write_byte((unsigned char *)addr, pp->data[i + 3]);
 		break;
 
