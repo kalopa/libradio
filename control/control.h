@@ -58,5 +58,5 @@ uchar_t	mycommand(struct packet *);
 void	send_time(struct channel *);
 void	enqueue(struct channel *, struct packet *);
 void	set_channel(uchar_t, uchar_t);
-void	send_status(uchar_t, uchar_t, uchar_t);
+void	local_status(uchar_t);
 void	response(uchar_t);

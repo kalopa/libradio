@@ -65,7 +65,7 @@
 uchar_t
 mycommand(struct packet *pp)
 {
-	int i, len, addr, rchan, rnode, rtype;
+	int i, len, addr, rchan, rnode;
 
 	switch (pp->cmd) {
 	case RADIO_CMD_NOOP:
@@ -90,7 +90,6 @@ mycommand(struct packet *pp)
 		radio.my_node_id = pp->data[1];
 		if (libradio_power_up() == 0) {
 			libradio_set_state(LIBRADIO_STATE_ACTIVE);
-			channels[radio.my_channel].state = LIBRADIO_CHSTATE_TRANSMIT;
 		} else {
 			printf("Radio power-up failed.\n");
 			return(3);
@@ -117,10 +116,7 @@ mycommand(struct packet *pp)
 		 */
 		if (pp->len != 3)
 			break;
-		rchan = pp->data[0];
-		rnode = pp->data[1];
-		rtype = pp->data[2];
-		send_status(rchan, rnode, rtype);
+		local_status(pp->data[2]);
 		break;
 
 	case RADIO_CMD_READ_EEPROM:
@@ -155,6 +151,10 @@ mycommand(struct packet *pp)
 		if (pp->data[0] < 0 || pp->data[0] > MAX_RADIO_CHANNELS)
 			break;
 		set_channel(pp->data[0], pp->data[1]);
+		printf("CHn:");
+		for (i = 0; i < MAX_RADIO_CHANNELS; i++)
+			printf("%d.", channels[i].state);
+		printf("..%u\n", radio.heart_beat);
 		break;
 
 	default:
@@ -167,7 +167,7 @@ mycommand(struct packet *pp)
  *
  */
 void
-send_status(uchar_t rchan, uchar_t rnode, uchar_t stype)
+local_status(uchar_t stype)
 {
 	int i, bv, len = 0;
 	uchar_t status[10];
@@ -175,17 +175,15 @@ send_status(uchar_t rchan, uchar_t rnode, uchar_t stype)
 	switch (stype) {
 	case RADIO_STATUS_DYNAMIC:
 		bv = analog_read(3);
-		printf("BV:%d\n", bv);
 		status[0] = radio.state;
-		status[1] = (bv >> 8) & 0xff;
-		status[2] = (bv & 0xff);
-		status[3] = (radio.ms_ticks >> 8) & 0xff;
-		status[4] = (radio.ms_ticks & 0xff);
-		status[5] = (radio.npacket_rx >> 8) & 0xff;
-		status[6] = (radio.npacket_rx & 0xff);
-		status[7] = (radio.npacket_tx >> 8) & 0xff;
-		status[8] = (radio.npacket_tx & 0xff);
-		len = 9;
+		status[1] = radio.tens_of_minutes;
+		status[2] = (bv >> 8) & 0xff;
+		status[3] = (bv & 0xff);
+		status[4] = (radio.npacket_rx >> 8) & 0xff;
+		status[5] = (radio.npacket_rx & 0xff);
+		status[6] = (radio.npacket_tx >> 8) & 0xff;
+		status[7] = (radio.npacket_tx & 0xff);
+		len = 8;
 		break;
 
 	case RADIO_STATUS_STATIC:
@@ -198,7 +196,8 @@ send_status(uchar_t rchan, uchar_t rnode, uchar_t stype)
 		len = 6;
 		break;
 	}
-	printf("<%c%d:%d:%d", rchan+'A', radio.my_node_id, RADIO_STATUS_RESPONSE, stype);
+	printf("<%c%d:%u:%d:%d", radio.my_channel + 'A', radio.my_node_id,
+							radio.ms_ticks, RADIO_STATUS_RESPONSE, stype);
 	for (i = 0; i < len; i++)
 		printf(",%u", status[i]);
 	putchar('\n');

@@ -67,39 +67,40 @@ enqueue(struct channel *chp, struct packet *pp)
 	 * Packet is for transmission. Update the channel offset. Note that we
 	 * will only accept packets for transmission in an ACTIVE state.
 	 */
-	if (radio.state == LIBRADIO_STATE_ACTIVE) {
-		/*
-		 * Add the node, length and channel to the length. Then update
-		 * the overall offset.
-		 */
-		pp->len += 3;
-		chp->offset += pp->len;
-		chp->state = LIBRADIO_CHSTATE_TRANSMIT;
-		/*
-		 * Calculate the TX priority. This is channel-dependent with
-		 * channel 0 having the highest priority. Multiply this by 8
-		 * to allow some "head room" for other channels to get bumped
-		 * up.
-		 */
-		if (chp->priority == 0)
-			chp->priority = (MAX_RADIO_CHANNELS - (chp - channels)) << 3;
-		else {
-			/*
-			 * We already have a priority for the channel. Increment it
-			 * now that we've added another packet.
-			 */
-			if (chp->priority < 0xfc)
-				chp->priority++;
-		}
-		response(0);
-	} else {
+	if (radio.state != LIBRADIO_STATE_ACTIVE) {
 		chp->state = LIBRADIO_CHSTATE_EMPTY;
 		response(2);
+		return;
 	}
+	/*
+	 * Add the node, length and channel to the length. Then update
+	 * the overall offset.
+	 */
+	pp->len += PACKET_HEADER_SIZE;
+	chp->offset += pp->len;
+	chp->state = LIBRADIO_CHSTATE_TRANSMIT;
+	/*
+	 * Calculate the TX priority. This is channel-dependent with
+	 * channel 0 having the highest priority. Multiply this by 8
+	 * to allow some "head room" for other channels to get bumped
+	 * up.
+	 */
+	if (chp->priority == 0)
+		chp->priority = (MAX_RADIO_CHANNELS - (chp - channels)) << 3;
+	else {
+		/*
+		 * We already have a priority for the channel. Increment it
+		 * now that we've added another packet.
+		 */
+		if (chp->priority < 0xfc)
+			chp->priority++;
+	}
+	response(0);
 }
 
 /*
- *
+ * Set a channel state to one of {DISABLED, READ, EMPTY}. This is the command
+ * used to enable or disable a radio channel.
  */
 void
 set_channel(uchar_t channo, uchar_t config)
@@ -109,9 +110,7 @@ set_channel(uchar_t channo, uchar_t config)
 	if (channo < 0 || channo >= MAX_RADIO_CHANNELS)
 		return;
 	chp = &channels[channo];
-	if (config == 0)
-		chp->state = LIBRADIO_CHSTATE_READ;
-	else
-		chp->state = LIBRADIO_CHSTATE_EMPTY;
+	if (config < 3)
+		chp->state = config;
 	chp->priority = 0;
 }

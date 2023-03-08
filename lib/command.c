@@ -59,7 +59,9 @@ libradio_command(struct packet *pp)
 {
 	int i, len, addr, rchan;
 
-	printf("Received a command: %d (len:%d)\n", pp->cmd, pp->len);
+	printf("CMDRCV:%d (len:%d,S%d)\n", pp->cmd, pp->len, radio.state);
+	if (pp->cmd != RADIO_CMD_ACTIVATE && radio.state < LIBRADIO_STATE_ACTIVE)
+		return;
 	switch (pp->cmd) {
 	case RADIO_CMD_NOOP:
 	case RADIO_STATUS_RESPONSE:
@@ -70,32 +72,31 @@ libradio_command(struct packet *pp)
 		/*
 		 * Do a firmware update.
 		 */
-		_bootstrap();
+		// FIXME!!
 		break;
 
 	case RADIO_CMD_STATUS:
 		/*
 		 * Return a status packet on the specified channel.
 		 */
-		if (pp->len != 3)
+		if (pp->len != (PACKET_HEADER_SIZE + 3))
 			break;
 		rchan = pp->data[0];
 		addr = pp->data[1];
 		i = pp->data[2];
 		printf(">> Send status type %d to %d\n", i, rchan);
-		if ((len = fetch_status(i, statusbuffer, MAX_RESPONSE_SIZE)) > 0) {
-			printf("Response len: %d\n", len);
-			libradio_send_response(rchan, addr, len, statusbuffer);
-		}
+		if ((len = fetch_status(i, statusbuffer, MAX_RESPONSE_SIZE)) > 0)
+			libradio_send_response(RADIO_STATUS_RESPONSE, rchan, addr, len, statusbuffer);
 		break;
 
 	case RADIO_CMD_ACTIVATE:
 		/*
 		 * An activation request! See if it's for us, and if so, activate.
 		 */
-		if (pp->len != 6)
+		if (pp->len != (PACKET_HEADER_SIZE + 6))
 			break;
-		printf(">> Activate! %d/%d/%d/%d\n", radio.cat1, radio.cat2, radio.num1, radio.num2);
+		printf(">> Activate! %d/%d/%d/%d\n", pp->data[2], pp->data[3], pp->data[4], pp->data[5]);
+		printf(">> ME: %d/%d/%d/%d\n", radio.cat1, radio.cat2, radio.num1, radio.num2);
 		if (pp->data[2] == radio.cat1 &&
 					pp->data[3] == radio.cat2 &&
 					pp->data[4] == radio.num1 &&
@@ -111,7 +112,7 @@ libradio_command(struct packet *pp)
 		/*
 		 * Deactivate this device.
 		 */
-		if (pp->len != 0)
+		if (pp->len != PACKET_HEADER_SIZE)
 			break;
 		printf(">> Deactivate...\n");
 		radio.my_channel = radio.my_node_id = 0;
@@ -122,7 +123,7 @@ libradio_command(struct packet *pp)
 		/*
 		 * Set the "tens of minutes" value thus enabling the real-time clock.
 		 */
-		if (pp->len != 1)
+		if (pp->len != (PACKET_HEADER_SIZE + 1))
 			break;
 		radio.tens_of_minutes = pp->data[0];
 		printf(">> Set Time: %u\n", radio.tens_of_minutes);
@@ -133,7 +134,7 @@ libradio_command(struct packet *pp)
 		 * Set the date. We don't use this information, it is
 		 * application-specific.
 		 */
-		if (pp->len != 2)
+		if (pp->len != (PACKET_HEADER_SIZE + 2))
 			break;
 		radio.date = (pp->data[0] << 8 | pp->data[1]);
 		printf(">> Set Date: %u\n", radio.date);
@@ -144,7 +145,7 @@ libradio_command(struct packet *pp)
 		 * Read up to 16 bytes of EEPROM data. The result is saved in a
 		 * packet buffer and transmitted on the specified channel.
 		 */
-		if (pp->len != 4)
+		if (pp->len != (PACKET_HEADER_SIZE + 4))
 			break;
 		printf(">> Read EEPROM...\n");
 		rchan = pp->data[0];
@@ -153,14 +154,14 @@ libradio_command(struct packet *pp)
 		printf("RChan %d, len:%d, addr:%d\n", rchan, len, addr);
 		for (i = 0; i < len; i++, addr++)
 			statusbuffer[i] = eeprom_read_byte((const unsigned char *)addr);
-		libradio_send_response(rchan, addr, len, statusbuffer);
+		libradio_send_response(RADIO_EEPROM_RESPONSE, rchan, addr, len, statusbuffer);
 		break;
 
 	case RADIO_CMD_WRITE_EEPROM:
 		/*
 		 * Write up to 16 bytes of EEPROM data.
 		 */
-		if (pp->len < 3 || pp->len > 19)
+		if (pp->len < (PACKET_HEADER_SIZE + 3) || pp->len > (PACKET_HEADER_SIZE + 22))
 			break;
 		printf(">> Write EEPROM (%d bytes)...\n", pp->len - 2);
 		addr = (pp->data[0] << 8 | pp->data[1]);

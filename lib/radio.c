@@ -91,16 +91,15 @@ libradio_set_property()
 void
 libradio_get_part_info()
 {
-	printf(">>> Get Part Info...\n");
 	spi_data[0] = SI4463_PART_INFO;
 	if (spi_send(1, 8) == 0)
 		return;
-	printf("Chip Rev: %x\n", spi_data[0]);
-	printf("Part: %x\n", (spi_data[1] << 8) | spi_data[2]);
-	printf("PBuild: %x\n", spi_data[3]);
-	printf("ID: %d\n", spi_data[4] << 8 | spi_data[5]);
-	printf("Customer: %x\n", spi_data[6]);
-	printf("ROM ID: %d\n", spi_data[7]);
+	radio.chip_rev = spi_data[0];
+	radio.part_id = (spi_data[1] << 8) | spi_data[2];
+	radio.pbuild = spi_data[3];
+	radio.device_id = (spi_data[4] << 8) | spi_data[5];
+	radio.customer = spi_data[6];
+	radio.rom_id = spi_data[7];
 }
 
 /*
@@ -109,15 +108,14 @@ libradio_get_part_info()
 void
 libradio_get_func_info()
 {
-	printf(">> Get func info...\n");
 	spi_data[0] = SI4463_FUNC_INFO;
 	if (spi_send(1, 6) == 0)
 		return;
-	printf("RevExt: %x\n", spi_data[0]);
-	printf("RevBranch: %x\n", spi_data[1]);
-	printf("RevInt: %x\n", spi_data[2]);
-	printf("Patch: %x\n", spi_data[3] << 8 | spi_data[4]);
-	printf("Func: %x\n", spi_data[5]);
+	radio.rev_ext = spi_data[0];
+	radio.rev_branch = spi_data[1];
+	radio.rev_int = spi_data[2];
+	radio.patch = (spi_data[3] << 8) | spi_data[4];
+	radio.func = spi_data[5];
 }
 
 /*
@@ -169,6 +167,8 @@ libradio_get_modem_status()
 		return;
 	radio.modem_pending = spi_data[0];
 	radio.modem_status = spi_data[1];
+	printf("MDMpend:%x,Stat:%x\n", radio.modem_pending, radio.modem_status);
+	printf("RSSI:%d,%x,%x,%x\n", spi_data[2], spi_data[3], spi_data[4], spi_data[5]);
 }
 
 /*
@@ -213,7 +213,7 @@ libradio_get_fifo_info(uchar_t clrf)
 }
 
 /*
- *
+ * Get the interrupt status, clearing all the bits in the process.
  */
 void
 libradio_get_int_status()

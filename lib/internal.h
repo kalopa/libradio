@@ -98,10 +98,12 @@ struct libradio {
 	uint_t		ms_ticks;
 	uchar_t		slow_period;
 	uchar_t		fast_period;
+	uchar_t		period;
 	uint_t		heart_beat;
 	uint_t		date;
 	uint_t		main_ticks;
 	uint_t		timeout;
+	uchar_t		catch_irq;
 	/*
 	 * Node and channel identification.
 	 */
@@ -110,6 +112,20 @@ struct libradio {
 	uchar_t		my_node_id;
 	uchar_t		cat1, cat2;
 	uchar_t		num1, num2;
+	/*
+	 * Radio settings.
+	 */
+	uchar_t		chip_rev;
+	uint_t		part_id;
+	uchar_t		pbuild;
+	uint_t		device_id;
+	uchar_t		customer;
+	uchar_t		rom_id;
+	uchar_t		rev_ext;
+	uchar_t		rev_branch;
+	uchar_t		rev_int;
+	uint_t		patch;
+	uchar_t		func;
 	/*
 	 * Radio parameters.
 	 */
@@ -132,6 +148,7 @@ struct libradio {
 };
 
 extern uchar_t			spi_data[MAX_SPI_BLOCK];
+extern uchar_t			irq_fired;
 extern struct libradio	radio;
 
 /*
@@ -145,6 +162,6 @@ void	spi_txpacket(struct channel *);
 void	libradio_set_song(uchar_t);
 
 void	libradio_command(struct packet *);
-void	libradio_send_response(uchar_t, uchar_t, uchar_t, uchar_t []);
+void	libradio_send_response(uchar_t, uchar_t, uchar_t, uchar_t, uchar_t []);
 
 void	_setss(uchar_t);

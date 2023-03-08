@@ -69,7 +69,7 @@ libradio_init(uchar_t c1, uchar_t c2, uchar_t n1, uchar_t n2)
 	libradio_set_state(LIBRADIO_STATE_STARTUP);
 	libradio_set_clock(1, 128);
 	radio.tens_of_minutes = 0xff;
-	radio.main_ticks = 50;		/* TEMP */
+	radio.main_ticks = 5;
 	radio.curr_state = SI4463_STATE_SLEEP;
 	radio.cat1 = c1;
 	radio.cat2 = c2;
@@ -87,6 +87,6 @@ libradio_init(uchar_t c1, uchar_t c2, uchar_t n1, uchar_t n2)
 void
 libradio_set_clock(uchar_t fast, uchar_t slow)
 {
-	radio.fast_period = fast;
+	radio.fast_period = radio.period = fast;
 	radio.slow_period = slow;
 }

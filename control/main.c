@@ -69,8 +69,8 @@ main()
 	sei();
 	printf("\nMain radio control system v%d.%d.\n",
 					FW_VERSION_H, FW_VERSION_L);
-	send_status(0, 0, RADIO_STATUS_DYNAMIC);
-	send_status(0, 0, RADIO_STATUS_STATIC);
+	local_status(RADIO_STATUS_DYNAMIC);
+	local_status(RADIO_STATUS_STATIC);
 	/*
 	 * Initialize the radio circuitry. We don't really care about our category
 	 * and ID number because we will get activated over the 1:1 serial line.

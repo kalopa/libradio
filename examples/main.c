@@ -55,7 +55,7 @@
 #include "libradio.h"
 
 #define FW_VERSION_H	1
-#define FW_VERSION_L	0
+#define FW_VERSION_L	1
 
 /*
  * The two 8-bit codes define an overall category of device and a subcategory
@@ -70,6 +70,7 @@ void	get_oil_level();
 
 uchar_t		mynum1;
 uchar_t		mynum2;
+uint_t		oldsp;
 int			battery_voltage;
 int			oil_level;
 
@@ -97,13 +98,15 @@ main()
 	 */
 	cli();
 	UBRR0 = 25;
-	/*UCSR0B = (1<<RXCIE0)|(1<<UDRIE0)|(1<<RXEN0)|(1<<TXEN0);*/
 	UCSR0B = (1<<RXCIE0)|(1<<RXEN0)|(1<<TXEN0);
 	UCSR0C = (1<<UCSZ01)|(1<<UCSZ00);
 	(void )fdevopen(sio_putc, sio_getc);
 	sei();
-	printf("\nOil tank monitor v%d.%d.\n", FW_VERSION_H, FW_VERSION_L);
-	printf("MCUSR:%x\n", MCUSR);
+	printf("\n\nOil tank monitor v%d.%d.\n", FW_VERSION_H, FW_VERSION_L);
+	printf("OLDSP:%x, MCUSR:%x\n", oldsp, MCUSR);
+	putchar('>');
+	while (getchar() != 'B')
+		;
 	/*
 	 * Initialize the radio circuitry. First look for our unique ID in EEPROM
 	 * and default to 0/1 if it's not there. Then call the libradio init
@@ -121,7 +124,8 @@ main()
 	}
 	printf("IDENT %d/%d\n", mynum1, mynum2);
 	libradio_init(OILTANK_CAT1, OILTANK_CAT2, mynum1, mynum2);
-	libradio_set_clock(10, 160);
+	libradio_set_clock(100, 160);
+	libradio_irq_enable(1);
 	/*
 	 * Begin the main loop - every clock tick, call the radio loop.
 	 */
@@ -135,10 +139,9 @@ main()
 		 */
 		libradio_rxloop();
 		/*
-		 * If the timer has fired, then one second has elapsed. Every five
-		 * minutes, check the battery and the oil level.
+		 * Every five minutes, check the battery and the oil level.
 		 */
-		if (libradio_timer_fired() && ++tlsecs >= 300) {
+		if (libradio_elapsed_second() && ++tlsecs >= 300) {
 			get_battery_voltage();
 			get_oil_level();
 			tlsecs = 0;
@@ -210,9 +213,9 @@ fetch_status(uchar_t status_type, uchar_t status[], int maxlen)
 		return(0);
 	switch (status_type) {
 	case RADIO_STATUS_DYNAMIC:
-		status[0] = (battery_voltage >> 8) & 0xff;
-		status[1] = (battery_voltage & 0xff);
-		status[2] = libradio_get_state();
+		status[0] = libradio_get_state();
+		status[1] = (battery_voltage >> 8) & 0xff;
+		status[2] = (battery_voltage & 0xff);
 		status[3] = (oil_level >> 8) & 0xff;
 		status[4] = (oil_level & 0xff);
 		return(5);
@@ -237,7 +240,6 @@ void
 get_battery_voltage()
 {
 	battery_voltage = analog_read(3);
-	printf("BV=%d\n", battery_voltage);
 }
 
 /*

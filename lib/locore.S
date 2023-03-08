@@ -109,7 +109,18 @@ irq_done:
 ;
 ; Radio module interrupt.
 radio_irq:
-	reti
+	push	r24					; Save the status register
+	in		r24,_SFR_IO_ADDR(SREG)
+	push	r24
+	push	r25					; Save the working regs
+;
+	ldi		r24,1
+	out		_SFR_IO_ADDR(EIFR),r24		; Clear the interrupt
+	sts		irq_fired,r24
+	ldi		r24,0
+	out		_SFR_IO_ADDR(EIMSK),r24		; Disable it too (for now)
+;
+	rjmp	irq_done			; Finished.
 ;
 ; Serial Peripheral Interface (SPI) interrupt.
 spi_irq:
@@ -129,18 +140,19 @@ spi_irq:
 	.global	_ioinit
 	.func	_ioinit
 _ioinit:
-	ldi		r16,0xee					; DDRB=OOOI OOOI
+	ldi		r16,0xee					; DDRB =OOOI OOOI
 	ldi		r17,0x02					; PORTB=0000 0010
 	out		_SFR_IO_ADDR(PORTB),r17
 	out		_SFR_IO_ADDR(DDRB),r16
 
-	ldi		r16,0x37					; DDRC=IIOO IOOO
+	ldi		r16,0x37					; DDRC =IIOO IOOO
 	ldi		r17,0x00					; PORTC=0000 0000
 	out		_SFR_IO_ADDR(PORTC),r17
 	out		_SFR_IO_ADDR(DDRC),r16
 
-	ldi		r16,0xfa					; DDRD=OOOO OIOI
-	out		_SFR_IO_ADDR(PORTD),r1		; PORTD=0000 0000
+	ldi		r16,0xfa					; DDRD =OOOO OIOI
+	ldi		r17,0x00					; PORTD=0000 0000
+	out		_SFR_IO_ADDR(PORTD),r17
 	out		_SFR_IO_ADDR(DDRD),r16
 	ret
 	.endfunc

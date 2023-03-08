@@ -111,10 +111,10 @@ The main controller will request a dynamic status from
 all active devices on a frequent basis and without
 any upstream prompting.
 
-Payload: 2 bytes: cc tt
+Payload: 2 bytes: cc nn tt
 
 The command requires a response channel (*cc*),
-and a status type (*tt*).
+a node address (*nn*), and a status type (*tt*).
 The response packet from the client will have a command
 type of RADIO_STATUS_RESPONSE and will be broadcast on
 the specified channel.

@@ -136,6 +136,12 @@ process_input()
 		_reset();
 		break;
 
+	case STATE(IO_STATE_WAITCHAN, 'S'):
+	case STATE(IO_STATE_WAITCHAN, 'T'):
+		local_status(ch - 'S');
+		state = IO_STATE_NEWLINE;
+		break;
+
 	case STATE(IO_STATE_WAITNODE, '0'):
 	case STATE(IO_STATE_WAITNODE, '1'):
 	case STATE(IO_STATE_WAITNODE, '2'):
@@ -221,6 +227,6 @@ response(uchar_t code)
 	if (code == 0)
 		printf("<+\n");
 	else
-		printf("<-%d\n", code);
+		printf("<-%d/%d\n", code, libradio_get_state());
 	state = IO_STATE_WAITNL;
 }

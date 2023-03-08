@@ -49,18 +49,20 @@
  */
 uint_t		songs[NLIBRADIO_STATES] = {0xffff, 0x3333, 0x0, 0x1, 0x3, 0xff, 0xf7};
 
+uchar_t		hbclock = 0;
 uint_t		timer_count;
 uchar_t		thread_ok;
-uchar_t		timer_fired;
+uchar_t		elapsed_second;
+uchar_t		irq_fired;
 
 /*
- * This function is called every clock tick (every 10ms) or ten times
- * per second. Increment the millisecond clock, and if we've passed
- * the tens of minutes, then increment that. The ToM parks itself at
- * 145 which is an illegal value used at init, to let us know we don't
- * actually know what time it is. We also call the heartbeat to flash
- * the LED appropriately. This should really be called every 62.5ms.
- * We use main_thread so the main loop doesn't run too quickly.
+ * This function is called every clock tick (every 10ms) or one hundred
+ * times per second. Increment the millisecond clock, and if we've passed the
+ * tens of minutes, then increment that. The ToM parks itself at 145 which is
+ * an illegal value used at init, to let us know we don't actually know what
+ * time it is. We also call the heartbeat to flash the LED appropriately.
+ * This should really be called every 62.5ms. We use main_thread so the main
+ * loop doesn't run too quickly.
  */
 void
 clocktick()
@@ -68,16 +70,20 @@ clocktick()
 	uchar_t ledf;
 
 	/*
-	 * Update the main LED song, one note at a time...
+	 * Update the main LED song, one note at a time. The whole thing should
+	 * take a consistent 1.6 seconds.
 	 */
-	_setled(ledf = (radio.heart_beat & 0x8000) ? 1 : 0);
-	radio.heart_beat = (radio.heart_beat << 1) | ledf;
+	if ((hbclock += radio.period) > 100) {
+		hbclock -= 100;
+		_setled(ledf = (radio.heart_beat & 0x8000) ? 1 : 0);
+		radio.heart_beat = (radio.heart_beat << 1) | ledf;
+	}
 	/*
 	 * Only track the time of day if we've been given some sort
 	 * of useful date value via external comms.
 	 */
 	if (radio.tens_of_minutes != 0xff) {
-		if ((radio.ms_ticks += radio.fast_period) >= 60000) {
+		if ((radio.ms_ticks += radio.period) >= 60000) {
 			radio.ms_ticks = 0;
 			radio.tens_of_minutes++;
 		}
@@ -93,10 +99,27 @@ clocktick()
 	 * Increment the seconds counter in case the main loop needs to do
 	 * periodic work (like check the battery).
 	 */
-	if ((timer_count += radio.fast_period) >= 100) {
+	if ((timer_count += radio.period) >= 1000) {
 		timer_count = 0;
-		timer_fired = 1;
+		elapsed_second = 1;
 	}
+}
+
+/*
+ * Enable radio IRQs. These appear on PD2 (INT0) and simply disable any
+ * further interrupts and set irq_fired, which is used by the wait-timer.
+ * We use catch_irq to track the fact we're using radio IRQs. This is so
+ * we remember to re-enable them, later on (see libradio_recv()).
+ */
+void
+libradio_irq_enable(uchar_t flag)
+{
+	irq_fired = 0;
+	EICRA = 0;
+	if ((radio.catch_irq = flag) == 0)
+		EIMSK = 0;
+	else
+		EIMSK = 01;
 }
 
 /*
@@ -119,11 +142,11 @@ libradio_get_thread_run()
  * Check to see if the timer has fired.
  */
 int
-libradio_timer_fired()
+libradio_elapsed_second()
 {
-	uchar_t old_value = timer_fired;
+	uchar_t old_value = elapsed_second;
 
-	timer_fired = 0;
+	elapsed_second = 0;
 	return(old_value);
 }
 
@@ -137,5 +160,4 @@ libradio_set_song(uchar_t new_state)
 		radio.heart_beat = songs[new_state];
 	else
 		radio.heart_beat = songs[LIBRADIO_STATE_ACTIVE];
-	printf("NEWHB:%x/%d\n", radio.heart_beat, new_state);
 }

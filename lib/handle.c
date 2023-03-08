@@ -39,21 +39,27 @@
 #include "libradio.h"
 #include "internal.h"
 
+struct channel	recvchan;
+struct channel	replychan;
+
 /*
  *
  */
 void
-libradio_handle_packet(struct channel *chp)
+libradio_handle_packet()
 {
 	int i;
+	struct channel *chp = &recvchan;
 	struct packet *pp;
 
 	/*
 	 * Look for a received packet.
 	 */
-	printf("HP:%d\n", radio.my_channel);
 	if (libradio_recv(chp, radio.my_channel)) {
-		printf("\nPacket RX! (tick:%u),len:%d\n", radio.ms_ticks, chp->offset);
+		printf("\nPacket RX! (ch%d,tk:%u,len:%d)\n", radio.my_channel, radio.ms_ticks, chp->offset);
+		for (i = 0; i < chp->offset; i++)
+			printf("%x.", chp->payload[i]);
+		putchar('\n');
 		for (i = 0; i < chp->offset;) {
 			pp = (struct packet *)&chp->payload[i];
 			printf("N%d,L%d,C%d\n", pp->node, pp->len, pp->cmd);
@@ -67,10 +73,42 @@ libradio_handle_packet(struct channel *chp)
 }
 
 /*
- *
+ * Send a response packet to the remote channel/address.
  */
 void
-libradio_send_response(uchar_t chan, uchar_t addr, uchar_t len, uchar_t buffer[])
+libradio_send_response(uchar_t cmd, uchar_t chan, uchar_t addr, uchar_t len, uchar_t buffer[])
 {
-	printf("TX Response on C%dN%d, len: %d\n", chan, addr, len);
+	int i;
+	struct channel *chp = &replychan;
+	struct packet *pp;
+	static int last_chan = 0;
+
+	printf("TX Response %d on C%dN%d, len: %d\n", cmd, chan, addr, len);
+	printf("Rstate:%d (off%d)\n", chp->state, chp->offset);
+	/*
+	 * Send a "tens of minutes" time packet.
+	 */
+	if (chan != last_chan) {
+		last_chan = chan;
+		chp->offset = 0;
+	} else {
+		if (chp->state == LIBRADIO_CHSTATE_EMPTY)
+			chp->offset = 0;
+	}
+	chp->state = LIBRADIO_CHSTATE_TRANSMIT;
+	chp->priority = 10;
+	pp = (struct packet *)&chp->payload[chp->offset];
+	pp->node = addr;
+	pp->len = len + PACKET_HEADER_SIZE;
+	pp->cmd = cmd;
+	for (i = 0; i < len; i++)
+		pp->data[i] = buffer[i];
+	chp->offset += pp->len;
+	chp->payload[chp->offset++] = 0;
+	chp->payload[chp->offset++] = 0;
+	if (libradio_send(chp, chan) != 0) {
+		printf("TXRespOK.\n");
+		chp->state = LIBRADIO_CHSTATE_EMPTY;
+		chp->priority = 0;
+	}
 }

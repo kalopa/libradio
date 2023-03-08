@@ -80,9 +80,10 @@ struct packet	{
 	uchar_t		node;		/* ID for receiver (0 is a broadcast) */
 	uchar_t		len;		/* Length of the data payload */
 	uchar_t		cmd;		/* Command for the receiver */
-	uchar_t		csum;		/* 8-bit checksum */
 	uchar_t		data[1];	/* Zero or more bytes of command data */
 };
+
+#define PACKET_HEADER_SIZE		4
 
 /*
  * Normal receivers just have a single channel entry, but the transmitter can
@@ -113,11 +114,12 @@ extern	volatile uchar_t	main_thread;
  * Prototypes...
  */
 void	libradio_init(uchar_t, uchar_t, uchar_t, uchar_t);
+void	libradio_irq_enable(uchar_t);
 uchar_t	libradio_get_state();
 void	libradio_set_state(uchar_t);
 void	libradio_set_clock(uchar_t, uchar_t);
 int		libradio_get_thread_run();
-int		libradio_timer_fired();
+int		libradio_elapsed_second();
 void	libradio_rxloop();
 void	libradio_command(struct packet *);
 
@@ -139,7 +141,7 @@ void	libradio_get_chip_status();
 void	libradio_change_radio_state(uchar_t);
 void	libradio_get_fifo_info(uchar_t);
 void	libradio_get_int_status();
-void	libradio_handle_packet(struct channel *);
+void	libradio_handle_packet();
 
 /*
  * Callback functions. operate() is called when a packet is received which is

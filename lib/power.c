@@ -89,7 +89,8 @@ libradio_power_up()
 	libradio_get_chip_status();
 	libradio_request_device_status();
 	libradio_get_chip_status();
-	printf("Active.\n");
+	printf("Rt%x\n", SREG);
+	printf("Radio is now Active.\n");
 	radio.radio_active = 1;
 	return(0);
 }

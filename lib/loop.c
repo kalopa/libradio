@@ -42,8 +42,6 @@
 #include "libradio.h"
 #include "internal.h"
 
-struct channel	recvchan;
-
 /*
  * This is called repeatedly from the main loop. The task here is based on
  * the current state. Note we will halt the processor if there is nothing
@@ -56,8 +54,14 @@ libradio_rxloop()
 	 * First things first - wait for the clock timer to kick us into doing
 	 * something. The sleep() function will pause the CPU until the next IRQ.
 	 */
-	while (libradio_get_thread_run() == 0)
+	printf("RXloop%d\n", irq_fired);
+	PORTB |= 04;
+	while (irq_fired == 0 && libradio_get_thread_run() == 0)
 		_sleep();
+	PORTB |= ~04;
+	printf("BK%d\n", irq_fired);
+	irq_fired = 0;
+	radio.main_ticks = 1000;
 	/*
 	 * Depending on what state we're in, do something useful. For a lot of
 	 * these states, not much happens and all we do is move to the next
@@ -81,7 +85,7 @@ libradio_rxloop()
 		break;
 
 	case LIBRADIO_STATE_LISTEN:
-		libradio_handle_packet(&recvchan);
+		libradio_handle_packet();
 #if 0
 		if (--radio.timeout == 0) {
 			/*
@@ -100,7 +104,7 @@ libradio_rxloop()
 		/*
 		 * Any active state - check for radio traffic.
 		 */
-		libradio_handle_packet(&recvchan);
+		libradio_handle_packet();
 		if (radio.saw_rx) {
 			radio.timeout = 60000;
 			radio.saw_rx = 0;

@@ -71,6 +71,7 @@ libradio_set_state(uchar_t new_state)
 		 * for 15 or 60 minutes depending.
 		 */
 		power_mode(0);
+		radio.period = radio.slow_period;
 		radio.tens_of_minutes = 0xff;
 		wait_ticks = (new_state == LIBRADIO_STATE_WARM) ?
 										15*60*1000L : 60*60*1000L;
@@ -89,6 +90,7 @@ libradio_set_state(uchar_t new_state)
 			 * real-time clock and the time of day.
 			 */
 			power_mode(1);
+			radio.period = radio.fast_period;
 		}
 		/*
 		 * Switch to channel 0, clear the packet flag, and set a timeout
@@ -117,6 +119,7 @@ libradio_set_state(uchar_t new_state)
 		 * in seconds).
 		 */
 		power_mode(1);
+		radio.period = radio.fast_period;
 		radio.timeout = 60000;
 		break;
 	}

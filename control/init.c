@@ -41,9 +41,7 @@
 #include "control.h"
 
 /*
- * Initialize the time of day clock system. Here's the run-down of the usage:
- * Timer0 - used for RTC interrupts. Set at 1/64 divider, and CTC mode, with
- * OCR0A set to 250 (for a clock frequency of 1kHz).
+ * Initialize the time of day clock system.
  */
 void
 clock_init()
@@ -51,9 +49,8 @@ clock_init()
 	/*
 	 * Timer1 is the workhorse. It is set up with a divide-by-64 to free-run
 	 * (CTC mode) at 250kHz. We use OCR1A (set to 2499) to derive a timer
-	 * frequency of 100Hz for the main clocktick() function. If we were in
-	 * fact using the power-down mode, we'd choose a 1/8 divider and an OCR1A
-	 * value of 19999. But there's no low power mode, so...
+	 * frequency of 100Hz for the main clocktick() function. If we are in a
+	 * power-down mode, we choose a 1/8 divider.
 	 */
 	TCNT1 = 0;
 	OCR1A = 2499;

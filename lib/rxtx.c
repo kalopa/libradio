@@ -67,7 +67,14 @@ libradio_recv(struct channel *chp, uchar_t channo)
 		/*
 		 * There's at least a packet. Go get it!
 		 */
+		printf("\n>GET:%d\n", radio.rx_fifo);
 		spi_rxpacket(chp);
+		/*
+		 * If we caught an IRQ notification, re-enable interrupts now that
+		 * we've pulled the packet.
+		 */
+		if (radio.catch_irq)
+			libradio_irq_enable(1);
 		ret = 1;
 	}
 	if (libradio_request_device_status() != SI4463_STATE_READY &&
@@ -88,6 +95,7 @@ libradio_recv(struct channel *chp, uchar_t channo)
 	radio.saw_rx = 1;
 	radio.npacket_rx++;
 	radio.curr_channel = channo;
+	libradio_get_modem_status();
 	return(ret);
 }
 
@@ -104,19 +112,22 @@ libradio_send(struct channel *chp, uchar_t channo)
 		return(0);
 	if (libradio_request_device_status() != SI4463_STATE_READY)
 		return(0);
+	printf("DevStat1: %u\n", libradio_request_device_status());
 	libradio_get_int_status();
 	libradio_get_fifo_info(03);
+	printf("FIFO:%d/%d\n", radio.rx_fifo, radio.tx_fifo);
 	if (radio.tx_fifo < SI4463_PACKET_LEN)
 		return(0);
 	spi_txpacket(chp);
 	libradio_get_fifo_info(0);
-	printf("TX (off:%d) on chan%d\n", chp->offset, channo);
+	printf("TX (off:%d) on C%d\n", chp->offset, channo);
 	spi_data[0] = SI4463_START_TX;
 	spi_data[1] = channo;
 	spi_data[2] = (SI4463_STATE_READY << 4);
 	spi_data[3] = 0;
 	spi_data[4] = SI4463_PACKET_LEN;
 	spi_send(5, 0);
+	printf("DevStat2: %u\n", libradio_request_device_status());
 	radio.npacket_tx++;
 	return(1);
 }

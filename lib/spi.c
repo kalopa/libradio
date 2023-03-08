@@ -133,21 +133,24 @@ void
 spi_rxpacket(struct channel *chp)
 {
 	int i;
-	uchar_t *cp;
+	uchar_t *cp, csum;
 	uint_t myticks;
 
 	_setss(1);
 	spi_byte(SI4463_READ_RX_FIFO);
 	myticks = spi_byte(0) << 8;
 	myticks |= spi_byte(0);
+	csum = spi_byte(0);
 	chp->offset = radio.rx_fifo - 2;
-	printf("OFF:%d\n", chp->offset);
-	for (i = 0, cp = chp->payload; i < chp->offset; i++)
-		*cp++ = spi_byte(0x00);
+	for (i = 0, cp = chp->payload; i < chp->offset; i++, cp++) {
+		*cp = spi_byte(0x00);
+		//csum ^= *cp;
+	}
 	_setss(0);
 	cli();
 	radio.ms_ticks = myticks;
 	sei();
+	printf("C:%x\n", csum);
 }
 
 /*
@@ -161,9 +164,12 @@ void
 spi_txpacket(struct channel *chp)
 {
 	int i;
-	uchar_t *cp;
+	uchar_t *cp, csum;
 	uint_t myticks;
 
+	for (csum = i = 0, cp = chp->payload; i < chp->offset; i++)
+		csum ^= *cp++;
+	csum ^= 0xff;
 	_setss(1);
 	spi_byte(SI4463_WRITE_TX_FIFO);
 	cli();
@@ -171,12 +177,13 @@ spi_txpacket(struct channel *chp)
 	sei();
 	spi_byte((myticks >> 8) & 0xff);
 	spi_byte(myticks & 0xff);
+	spi_byte(csum ^ 0xff);
 	/*
 	 * Send out the packet length, minus the time stamp we've already sent.
 	 * Send nulls if we've run out of data.
 	 */
-	printf("SPI.TX(%d,%u)\n", chp->offset, myticks);
-	for (i = 0, cp = chp->payload; i < (SI4463_PACKET_LEN - 2); i++) {
+	printf("SPI.TX(%d,%u,%x)\n", chp->offset, myticks, csum);
+	for (i = 0, cp = chp->payload; i < (SI4463_PACKET_LEN - 3); i++) {
 		if (i < chp->offset)
 			spi_byte(*cp++);
 		else

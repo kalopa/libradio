@@ -43,6 +43,8 @@
 #include "internal.h"
 #include "control.h"
 
+#define SET_TIME_MODULO		1000
+
 struct channel	channels[MAX_RADIO_CHANNELS];
 struct packet	*pp;
 
@@ -63,13 +65,14 @@ tx_init()
 }
 
 /*
- *
+ * Check to see if we need to send a packet on an active channel. Also, send
+ * a time sync on a periodic basis.
  */
 void
 tx_check_queues()
 {
 	int channo, modulo;
-	struct channel *chp, *nchp = NULL;
+	struct channel *chp;
 	static int last_modulo = 0;
 
 	if (radio.state < LIBRADIO_STATE_LISTEN)
@@ -78,19 +81,15 @@ tx_check_queues()
 	 * First off, send a time stamp on each of the active channels regardless
 	 * of anything else.
 	 */
-	modulo = radio.ms_ticks % 1000;
-	if (last_modulo > modulo) {
-		last_modulo = modulo;
+	modulo = radio.ms_ticks % SET_TIME_MODULO;
+	chp = NULL;
+	if (modulo < last_modulo) {
 		/*
-		 * Millisecond clock has wrapped around. Time to Tx a SET TIME.
+		 * Millisecond clock has wrapped around. Time to TX a SET TIME.
 		 */
-		printf("ticks!%u\n", TCCR1B);
-		channo = (radio.ms_ticks / 1000) % MAX_RADIO_CHANNELS;
+		channo = (radio.ms_ticks / SET_TIME_MODULO) % MAX_RADIO_CHANNELS;
 		chp = &channels[channo];
-		printf("channo%d,S%d,off:%d\n", channo, chp->state, chp->offset);
-		if (chp->state != LIBRADIO_CHSTATE_DISABLED &&
-									chp->state != LIBRADIO_CHSTATE_READ &&
-									chp->offset < (MAX_FIFO_SIZE - 8)) {
+		if (chp->state >= LIBRADIO_CHSTATE_EMPTY && chp->offset < (MAX_FIFO_SIZE - 8)) {
 			struct packet *pp;
 
 			printf("Ichp->state:%d (off%d)\n", chp->state, chp->offset);
@@ -103,39 +102,48 @@ tx_check_queues()
 			chp->priority = 0xff;
 			pp = (struct packet *)&chp->payload[chp->offset];
 			pp->node = 0;
-			pp->len = 4;
+			pp->len = PACKET_HEADER_SIZE + 1;
 			pp->cmd = RADIO_CMD_SET_TIME;
 			pp->data[0] = radio.tens_of_minutes;
-			chp->offset += 4;
+			chp->offset += pp->len;
 		}
-	} else {
+	}
+	last_modulo = modulo;
+	if (chp == NULL) {
+		struct channel *nchp;
+
 		/*
 		 * No time of day packet so choose the highest priority for the
 		 * transmission. If we can't find a packet to send, we're done.
 		 */
-		last_modulo = modulo;
-		for (channo = 0, chp = channels; channo < MAX_RADIO_CHANNELS;
-														channo++, chp++) {
+		for (channo = 0, nchp = NULL, chp = channels;
+											channo < MAX_RADIO_CHANNELS;
+											channo++, chp++) {
 			if (chp->priority == 0 || chp->state != LIBRADIO_CHSTATE_TRANSMIT)
 				continue;
 			if (nchp == NULL || chp->priority > nchp->priority)
 				nchp = chp;
 		}
-		if (nchp == NULL)
-			return;
-		printf("Echp->state:%d (off%d)\n", chp->state, chp->offset);
 		chp = nchp;
 	}
+	if (chp == NULL || chp->state < LIBRADIO_CHSTATE_EMPTY)
+		return;
 	/*
 	 * We have a channel ready for transmission. Send it now...
 	 */
-	printf("TX: ch%d (len:%d)\n", channo, chp->offset);
-	if (chp->offset >= MAX_FIFO_SIZE)
-		_bootstrap();
+	channo = chp - channels;
+	printf("TX:chst:%d,off%d,chan:%d\n", chp->state, chp->offset, channo);
 	chp->payload[chp->offset++] = 0;
 	chp->payload[chp->offset++] = 0;
+	{
+		int i;
+
+		for (i = 0; i < chp->offset; i++)
+			printf("%x.", chp->payload[i]);
+		putchar('\n');
+	}
 	if (libradio_send(chp, channo) != 0) {
-		printf("TXGood.\n");
+		printf("TXGood\n");
 		chp->state = LIBRADIO_CHSTATE_EMPTY;
 		chp->priority = 0;
 	}
@@ -149,5 +157,8 @@ tx_check_queues()
 		if (chp->state == LIBRADIO_CHSTATE_TRANSMIT && chp->priority < 0xfc)
 			chp->priority += 2;
 	}
-	printf("Done.\n");
+	printf("CHSTAT:");
+	for (channo = 0; channo < MAX_RADIO_CHANNELS; channo++)
+		printf("%d.", channels[channo].state);
+	printf(" Done.\n\n");
 }
