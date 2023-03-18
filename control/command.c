@@ -83,7 +83,7 @@ mycommand(struct packet *pp)
 		/*
 		 * Activate this device. Don't even check the IDs, just do it.
 		 */
-		if (pp->len != 6)
+		if (pp->len != 3)
 			break;
 		printf("Master Activate!\n");
 		radio.my_channel = pp->data[0];

@@ -160,5 +160,5 @@ tx_check_queues()
 	printf("CHSTAT:");
 	for (channo = 0; channo < MAX_RADIO_CHANNELS; channo++)
 		printf("%d.", channels[channo].state);
-	printf(" Done.\n\n");
+	printf(".\n");
 }

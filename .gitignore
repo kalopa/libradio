@@ -27,6 +27,7 @@
 *.out
 *.hex
 libradiod
+control/radiocon
 examples/oiltank
 
 #

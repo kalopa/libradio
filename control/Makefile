@@ -41,9 +41,16 @@ CSRCS=	main.c init.c command.c enqueue.c transmit.c input.c
 BIN=	radiocon
 FIRMWARE=radiocon.hex
 
+SERIAL_DEVICE=/dev/ttyS0
+SERIAL_SPEED=38400
+
 include ../avr.mk
 
 CFLAGS+=	-I../lib
+
+program: $(FIRMWARE)
+	sudo kprog -v -l $(SERIAL_DEVICE) -s $(SERIAL_SPEED) $(FIRMWARE)
+	rm $(FIRMWARE)
 
 $(BIN):	$(OBJS) $(LIBRADIO)
 	$(CC) -o $(BIN) $(LDFLAGS) $(OBJS) $(LIBS)

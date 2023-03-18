@@ -37,7 +37,7 @@
 #define CONTROL_N2		1
 
 #define FW_VERSION_H	2
-#define FW_VERSION_L	3
+#define FW_VERSION_L	4
 
 #define BATTERY_LOW		658
 #define BATTERY_OK		800
