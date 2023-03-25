@@ -144,13 +144,13 @@ spi_rxpacket(struct channel *chp)
 	chp->offset = radio.rx_fifo - 2;
 	for (i = 0, cp = chp->payload; i < chp->offset; i++, cp++) {
 		*cp = spi_byte(0x00);
-		//csum ^= *cp;
+		csum ^= *cp;
 	}
 	_setss(0);
+	printf("SPI.RX(%d,%u,%x)\n", chp->offset, myticks, csum);
 	cli();
 	radio.ms_ticks = myticks;
 	sei();
-	printf("C:%x\n", csum);
 }
 
 /*

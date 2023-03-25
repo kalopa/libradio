@@ -42,7 +42,13 @@ ASRCS=
 CSRCS=	main.c
 BIN=	oiltank
 
+SERIAL_DEVICE=/dev/cuaU0:38400
+
 include ../avr.mk
+
+kprog:	$(FIRMWARE)
+	sudo kprog -v -d $(SERIAL_DEVICE) $(FIRMWARE)
+	rm $(FIRMWARE)
 
 $(BIN):	$(OBJS) $(LIBRADIO)
 		$(CC) -o $(BIN) $(LDFLAGS) $(OBJS) $(LIBS)

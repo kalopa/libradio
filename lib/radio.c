@@ -167,8 +167,6 @@ libradio_get_modem_status()
 		return;
 	radio.modem_pending = spi_data[0];
 	radio.modem_status = spi_data[1];
-	printf("MDMpend:%x,Stat:%x\n", radio.modem_pending, radio.modem_status);
-	printf("RSSI:%d,%x,%x,%x\n", spi_data[2], spi_data[3], spi_data[4], spi_data[5]);
 }
 
 /*
@@ -210,6 +208,7 @@ libradio_get_fifo_info(uchar_t clrf)
 		return;
 	radio.rx_fifo = spi_data[0];
 	radio.tx_fifo = spi_data[1];
+	printf("FIFO:%d/%d\n", radio.rx_fifo, radio.tx_fifo);
 }
 
 /*
@@ -219,9 +218,7 @@ void
 libradio_get_int_status()
 {
 	spi_data[0] = SI4463_GET_INT_STATUS;
-	spi_data[1] = 0;
-	spi_data[2] = 0;
-	spi_data[3] = 0;
+	spi_data[1] = spi_data[2] = spi_data[3] = 0;
 	if (spi_send(4, 8) == 0)
 		return;
 	radio.int_pending = spi_data[0];

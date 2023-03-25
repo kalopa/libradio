@@ -53,7 +53,6 @@ uchar_t		hbclock = 0;
 uint_t		timer_count;
 uchar_t		thread_ok;
 uchar_t		elapsed_second;
-uchar_t		irq_fired;
 
 /*
  * This function is called every clock tick (every 10ms) or one hundred
@@ -69,6 +68,7 @@ clocktick()
 {
 	uchar_t ledf;
 
+	radio.all_ticks++;
 	/*
 	 * Update the main LED song, one note at a time. The whole thing should
 	 * take a consistent 1.6 seconds.
@@ -103,23 +103,6 @@ clocktick()
 		timer_count = 0;
 		elapsed_second = 1;
 	}
-}
-
-/*
- * Enable radio IRQs. These appear on PD2 (INT0) and simply disable any
- * further interrupts and set irq_fired, which is used by the wait-timer.
- * We use catch_irq to track the fact we're using radio IRQs. This is so
- * we remember to re-enable them, later on (see libradio_recv()).
- */
-void
-libradio_irq_enable(uchar_t flag)
-{
-	irq_fired = 0;
-	EICRA = 0;
-	if ((radio.catch_irq = flag) == 0)
-		EIMSK = 0;
-	else
-		EIMSK = 01;
 }
 
 /*

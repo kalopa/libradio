@@ -73,8 +73,7 @@ libradio_set_state(uchar_t new_state)
 		power_mode(0);
 		radio.period = radio.slow_period;
 		radio.tens_of_minutes = 0xff;
-		wait_ticks = (new_state == LIBRADIO_STATE_WARM) ?
-										15*60*1000L : 60*60*1000L;
+		wait_ticks = (new_state == LIBRADIO_STATE_WARM) ? 15*60*1000L : 60*60*1000L;
 		wait_ticks /= (long )radio.slow_period;
 		break;
 

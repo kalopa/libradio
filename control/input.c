@@ -48,7 +48,6 @@
 #define IO_STATE_WAITNODE		3
 #define IO_STATE_WAITCMD		4
 #define IO_STATE_WAITDATA		5
-#define IO_STATE_SAWCTRLE		6
 
 #define STATE(s, ch)			((ch) << 3 | (s))
 
@@ -65,14 +64,6 @@ process_input()
 {
 	uchar_t ch = getchar();
 
-	if (ch == '\005') {
-		/*
-		 * In deference to TOPS-20, a ^E\ character sequence will switch to
-		 * the bootstrap loader.
-		 */
-		state = IO_STATE_SAWCTRLE;
-		return;
-	}
 	/*
 	 * A carriage-return or newline is a good way to flush out any junk and
 	 * get to a known state on the serial input.
@@ -87,10 +78,6 @@ process_input()
 	 * Otherwise, use a state machine to handle character input.
 	 */
 	switch (STATE(state, ch)) {
-	case STATE(IO_STATE_SAWCTRLE, '\\'):
-		_bootstrap();
-		break;
-
 	case STATE(IO_STATE_NEWLINE, '>'):
 		state = IO_STATE_WAITCHAN;
 		break;

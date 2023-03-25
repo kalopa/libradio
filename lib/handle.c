@@ -56,7 +56,7 @@ libradio_handle_packet()
 	 * Look for a received packet.
 	 */
 	if (libradio_recv(chp, radio.my_channel)) {
-		printf("\nPacket RX! (ch%d,tk:%u,len:%d)\n", radio.my_channel, radio.ms_ticks, chp->offset);
+		printf("Packet RX! (ch%d,tk:%u,len:%d)\n", radio.my_channel, radio.ms_ticks, chp->offset);
 		for (i = 0; i < chp->offset; i++)
 			printf("%x.", chp->payload[i]);
 		putchar('\n');

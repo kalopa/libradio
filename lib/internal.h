@@ -101,6 +101,7 @@ struct libradio {
 	uchar_t		period;
 	uint_t		heart_beat;
 	uint_t		date;
+	uint_t		all_ticks;
 	uint_t		main_ticks;
 	uint_t		timeout;
 	uchar_t		catch_irq;

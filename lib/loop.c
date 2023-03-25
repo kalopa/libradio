@@ -43,6 +43,11 @@
 #include "internal.h"
 
 /*
+ * Track whenever the radio interrupts us.
+ */
+uchar_t		irq_fired = 0;
+
+/*
  * This is called repeatedly from the main loop. The task here is based on
  * the current state. Note we will halt the processor if there is nothing
  * to do at this point.
@@ -54,13 +59,13 @@ libradio_rxloop()
 	 * First things first - wait for the clock timer to kick us into doing
 	 * something. The sleep() function will pause the CPU until the next IRQ.
 	 */
-	printf("RXloop%d\n", irq_fired);
-	PORTB |= 04;
+	printf(">>RX.TOP S:%d,I%d/%d,RX%d\n", radio.state, irq_fired, PIND & 04, radio.saw_rx);
 	while (irq_fired == 0 && libradio_get_thread_run() == 0)
 		_sleep();
-	PORTB |= ~04;
-	printf("BK%d\n", irq_fired);
-	irq_fired = 0;
+	if (irq_fired) {
+		libradio_get_int_status();
+		libradio_irq_enable(1);
+	}
 	radio.main_ticks = 1000;
 	/*
 	 * Depending on what state we're in, do something useful. For a lot of
@@ -92,11 +97,10 @@ libradio_rxloop()
 			 * If we're still in this state after the timeout, then we go to
 			 * WARM or COLD sleep depending on whether we've seen any traffic.
 			 */
-			libradio_set_state(radio.saw_rx ? LIBRADIO_STATE_WARM :
-												LIBRADIO_STATE_COLD);
+			libradio_set_state(radio.saw_rx ? LIBRADIO_STATE_WARM : LIBRADIO_STATE_COLD);
 		}
 #else
-		radio.main_ticks = 10;
+		radio.main_ticks = 100;
 #endif
 		break;
 
@@ -117,4 +121,21 @@ libradio_rxloop()
 		}
 		break;
 	}
+}
+
+/*
+ * Enable radio IRQs. These appear on PD2 (INT0) and simply disable any
+ * further interrupts and set irq_fired, which is used by the wait-timer.
+ * We use catch_irq to track the fact we're using radio IRQs. This is so
+ * we remember to re-enable them, later on (see libradio_recv()).
+ */
+void
+libradio_irq_enable(uchar_t flag)
+{
+	irq_fired = 0;
+	EICRA = 0;
+	if ((radio.catch_irq = flag) == 0)
+		EIMSK = 0;
+	else
+		EIMSK = 01;
 }

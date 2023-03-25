@@ -142,6 +142,8 @@ void	libradio_change_radio_state(uchar_t);
 void	libradio_get_fifo_info(uchar_t);
 void	libradio_get_int_status();
 void	libradio_handle_packet();
+void	libradio_debug();
+void	libradio_dump();
 
 /*
  * Callback functions. operate() is called when a packet is received which is

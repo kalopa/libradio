@@ -63,12 +63,14 @@ libradio_recv(struct channel *chp, uchar_t channo)
 	 */
 	libradio_get_int_status();
 	libradio_get_fifo_info(0);
+	printf("1RX FIFO %d\n", radio.rx_fifo);
 	if (radio.rx_fifo >= SI4463_PACKET_LEN) {
 		/*
 		 * There's at least a packet. Go get it!
 		 */
-		printf("\n>GET:%d\n", radio.rx_fifo);
 		spi_rxpacket(chp);
+		libradio_get_fifo_info(03);
+		printf("2RX FIFO %d\n", radio.rx_fifo);
 		/*
 		 * If we caught an IRQ notification, re-enable interrupts now that
 		 * we've pulled the packet.

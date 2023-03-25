@@ -116,6 +116,8 @@ radio_irq:
 ;
 	ldi		r24,1
 	out		_SFR_IO_ADDR(EIFR),r24		; Clear the interrupt
+	lds		r24,irq_fired
+	inc		r24
 	sts		irq_fired,r24
 	ldi		r24,0
 	out		_SFR_IO_ADDR(EIMSK),r24		; Disable it too (for now)
@@ -140,20 +142,19 @@ spi_irq:
 	.global	_ioinit
 	.func	_ioinit
 _ioinit:
-	ldi		r16,0xee					; DDRB =OOOI OOOI
-	ldi		r17,0x02					; PORTB=0000 0010
-	out		_SFR_IO_ADDR(PORTB),r17
-	out		_SFR_IO_ADDR(DDRB),r16
+	ldi		r16,0xee
+	ldi		r17,0x02
+	out		_SFR_IO_ADDR(PORTB),r17				; PORTB=0000 0010
+	out		_SFR_IO_ADDR(DDRB),r16				; DDRB =OOOI OOOI
 
-	ldi		r16,0x37					; DDRC =IIOO IOOO
-	ldi		r17,0x00					; PORTC=0000 0000
-	out		_SFR_IO_ADDR(PORTC),r17
-	out		_SFR_IO_ADDR(DDRC),r16
+	ldi		r16,0x37
+	ldi		r17,0x00
+	out		_SFR_IO_ADDR(PORTC),r17				; PORTC=0000 0000
+	out		_SFR_IO_ADDR(DDRC),r16				; DDRC =IIOO IOOO
 
-	ldi		r16,0xfa					; DDRD =OOOO OIOI
-	ldi		r17,0x00					; PORTD=0000 0000
-	out		_SFR_IO_ADDR(PORTD),r17
-	out		_SFR_IO_ADDR(DDRD),r16
+	ldi		r16,0xfa
+	out		_SFR_IO_ADDR(PORTD),r17				; PORTD=0000 0000
+	out		_SFR_IO_ADDR(DDRD),r16				; DDRD =OOOO OIOI
 	ret
 	.endfunc
 ;

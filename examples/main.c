@@ -70,7 +70,6 @@ void	get_oil_level();
 
 uchar_t		mynum1;
 uchar_t		mynum2;
-uint_t		oldsp;
 int			battery_voltage;
 int			oil_level;
 
@@ -80,7 +79,7 @@ int			oil_level;
 int
 main()
 {
-	int ch, tlsecs, bs_state;
+	int tlsecs;
 
 	/*
 	 * Timer1 is the workhorse. It is set up with a divide-by-64 to free-run
@@ -102,11 +101,8 @@ main()
 	UCSR0C = (1<<UCSZ01)|(1<<UCSZ00);
 	(void )fdevopen(sio_putc, sio_getc);
 	sei();
+	_setled(0);
 	printf("\n\nOil tank monitor v%d.%d.\n", FW_VERSION_H, FW_VERSION_L);
-	printf("OLDSP:%x, MCUSR:%x\n", oldsp, MCUSR);
-	putchar('>');
-	while (getchar() != 'B')
-		;
 	/*
 	 * Initialize the radio circuitry. First look for our unique ID in EEPROM
 	 * and default to 0/1 if it's not there. Then call the libradio init
@@ -122,14 +118,14 @@ main()
 		eeprom_write_byte((unsigned char *)0, mynum1);
 		eeprom_write_byte((unsigned char *)1, mynum2);
 	}
-	printf("IDENT %d/%d\n", mynum1, mynum2);
+	printf("IDENT %d/%d/%d/%d\n", OILTANK_CAT1, OILTANK_CAT2, mynum1, mynum2);
 	libradio_init(OILTANK_CAT1, OILTANK_CAT2, mynum1, mynum2);
 	libradio_set_clock(100, 160);
 	libradio_irq_enable(1);
 	/*
 	 * Begin the main loop - every clock tick, call the radio loop.
 	 */
-	tlsecs = bs_state = 0;
+	tlsecs = 0;
 	get_battery_voltage();
 	get_oil_level();
 	while (1) {
@@ -145,23 +141,6 @@ main()
 			get_battery_voltage();
 			get_oil_level();
 			tlsecs = 0;
-		}
-		/*
-		 * For debugging purposes, look for the command sequence ^E\ to
-		 * enter bootstrap mode. Normally just calling the loop is enough
-		 * unless there are other specific tasks to be performed. Be warned
-		 * though, the timing of this loop is state-dependent.
-		 */
-		if (!sio_iqueue_empty()) {
-			if ((ch = getchar()) == '\005')
-				bs_state = 1;
-			else {
-				if (bs_state == 1 && ch == '\\')
-					_bootstrap();
-				else
-					putchar('?');
-				bs_state = 0;
-			}
 		}
 	}
 }

@@ -41,7 +41,7 @@ DEVICE=	atmega328p
 
 ASRCS=	locore.S setled.S setss.S
 CSRCS=	init.c loop.c state.c handle.c command.c \
-	rxtx.c power.c radio.c clock.c spi.c
+	rxtx.c power.c radio.c clock.c spi.c debug.c
 
 include ../avr.mk
 
@@ -55,4 +55,4 @@ clean:
 $(LIBRADIO):	$(OBJS)
 	$(AR) cru $(LIBRADIO) $?
 
-$(OBJS):	../libradio.h
+$(OBJS):	internal.h radio_config.h ../libradio.h
