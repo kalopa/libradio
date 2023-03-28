@@ -82,7 +82,8 @@ libradio_init(uchar_t c1, uchar_t c2, uchar_t n1, uchar_t n2)
  * Set the fast and slow clock parameters. Each argument defines the number
  * of ticks (each tick is 10ms) of each clock interrupt in fast or slow mode.
  * The default is a 10ms clock interval (or 100Hz) when running normally and
- * a 1.28s interval in low power mode.
+ * a 1.28s interval in low power mode. Setting the fast period to 50 for
+ * example means that each clock tick represents 500ms.
  */
 void
 libradio_set_clock(uchar_t fast, uchar_t slow)

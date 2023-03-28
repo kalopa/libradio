@@ -37,7 +37,7 @@
  * for a lot of the low-level radio functions but the operational state
  * machine is quite different. For example, if it is in a COLD or WARM
  * sleep, it is the serial port which will re-activate the software,
- * not the radiointerface.
+ * not the radio interface.
  */
 #include <stdio.h>
 #include <avr/io.h>
@@ -77,7 +77,7 @@ main()
 	 * The EEPROM data however will be used for channel ownership information.
 	 */
 	libradio_init(CONTROL_C1, CONTROL_C2, CONTROL_N1, CONTROL_N2);
-	libradio_set_clock(10, 160);
+	libradio_set_clock(1, 160);
 	tx_init();
 	/*
 	 * Begin the main loop - every clock tick, call the radio loop.

@@ -88,6 +88,7 @@ tx_check_queues()
 		 * Millisecond clock has wrapped around. Time to TX a SET TIME.
 		 */
 		channo = (radio.ms_ticks / SET_TIME_MODULO) % MAX_RADIO_CHANNELS;
+		channo = 0;
 		chp = &channels[channo];
 		if (chp->state >= LIBRADIO_CHSTATE_EMPTY && chp->offset < (MAX_FIFO_SIZE - 8)) {
 			struct packet *pp;
@@ -135,13 +136,6 @@ tx_check_queues()
 	printf("TX:chst:%d,off%d,chan:%d\n", chp->state, chp->offset, channo);
 	chp->payload[chp->offset++] = 0;
 	chp->payload[chp->offset++] = 0;
-	{
-		int i;
-
-		for (i = 0; i < chp->offset; i++)
-			printf("%x.", chp->payload[i]);
-		putchar('\n');
-	}
 	if (libradio_send(chp, channo) != 0) {
 		printf("TXGood\n");
 		chp->state = LIBRADIO_CHSTATE_EMPTY;
@@ -157,8 +151,4 @@ tx_check_queues()
 		if (chp->state == LIBRADIO_CHSTATE_TRANSMIT && chp->priority < 0xfc)
 			chp->priority += 2;
 	}
-	printf("CHSTAT:");
-	for (channo = 0; channo < MAX_RADIO_CHANNELS; channo++)
-		printf("%d.", channels[channo].state);
-	printf(".\n");
 }

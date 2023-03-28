@@ -57,7 +57,7 @@ libradio_get_state()
 void
 libradio_set_state(uchar_t new_state)
 {
-	long wait_ticks = 1;
+	long wait_ticks = 5;
 
 	if (new_state != LIBRADIO_STATE_STARTUP && radio.state == new_state)
 		return;
@@ -73,7 +73,7 @@ libradio_set_state(uchar_t new_state)
 		power_mode(0);
 		radio.period = radio.slow_period;
 		radio.tens_of_minutes = 0xff;
-		wait_ticks = (new_state == LIBRADIO_STATE_WARM) ? 15*60*1000L : 60*60*1000L;
+		wait_ticks = (new_state == LIBRADIO_STATE_WARM) ? 15*60*100L : 60*60*100L;
 		wait_ticks /= (long )radio.slow_period;
 		break;
 
@@ -99,16 +99,16 @@ libradio_set_state(uchar_t new_state)
 		radio.my_channel = 0;
 		radio.saw_rx = 0;
 		if (radio.state == LIBRADIO_STATE_COLD)
-			radio.timeout = 60000 / radio.fast_period;
+			radio.timeout = 6000 / radio.fast_period;
 		else
-			radio.timeout = (int )(120000L / (long )radio.fast_period);
+			radio.timeout = (int )(12000L / (long )radio.fast_period);
 		break;
 
 	case LIBRADIO_STATE_ERROR:
 		/*
 		 * Some sort of fatal error. Stay in this state for a minute.
 		 */
-		wait_ticks = 60*1000L / (long )radio.fast_period;
+		wait_ticks = 60*100L / (long )radio.fast_period;
 		break;
 
 	default:
@@ -119,7 +119,7 @@ libradio_set_state(uchar_t new_state)
 		 */
 		power_mode(1);
 		radio.period = radio.fast_period;
-		radio.timeout = 60000;
+		radio.timeout = 6000;
 		break;
 	}
 	cli();

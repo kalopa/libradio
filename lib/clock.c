@@ -68,7 +68,6 @@ clocktick()
 {
 	uchar_t ledf;
 
-	radio.all_ticks++;
 	/*
 	 * Update the main LED song, one note at a time. The whole thing should
 	 * take a consistent 1.6 seconds.
@@ -93,7 +92,7 @@ clocktick()
 	 */
 	if (radio.main_ticks != 0 && --radio.main_ticks == 0) {
 		thread_ok = 1;
-		radio.main_ticks = 1;
+		radio.main_ticks = 5;
 	}
 	/*
 	 * Increment the seconds counter in case the main loop needs to do
@@ -103,6 +102,7 @@ clocktick()
 		timer_count = 0;
 		elapsed_second = 1;
 	}
+	radio.all_ticks++;
 }
 
 /*
