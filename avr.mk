@@ -93,12 +93,6 @@ fuses:
 erase:
 	sudo avrdude -p $(DEVICE) -c $(PROG) -e
 
-tags:	$(ASRCS) $(CSRCS)
-	ctags $(CSRCS)
-	grep '^_.*:$$' $(ASRCS) /dev/null | awk -F: '{printf "%s\t%s\t/^%s:$$/\n", $$2, $$1, $$2}' >> tags
-	sort tags > tags-
-	mv tags- tags
-
 docs:	srclist.pdf
 
 $(FIRMWARE): $(BIN)

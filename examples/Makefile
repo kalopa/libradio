@@ -50,6 +50,9 @@ kprog:	$(FIRMWARE)
 	sudo kprog -v -d $(SERIAL_DEVICE) $(FIRMWARE)
 	rm $(FIRMWARE)
 
+tags:
+	ctags *.[ch] ../lib/*.[ch]
+
 $(BIN):	$(OBJS) $(LIBRADIO)
 		$(CC) -o $(BIN) $(LDFLAGS) $(OBJS) $(LIBS)
 
