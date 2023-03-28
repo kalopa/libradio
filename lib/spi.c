@@ -98,11 +98,7 @@ spi_send(uchar_t send_len, uchar_t recv_len)
 		 * Start by sending a READ_CMD_BUFF command.
 		 */
 		_setss(1);
-		if (spi_byte(0x44) == -1) {
-			_setss(0);
-			return(0);
-		}
-		if ((k = spi_byte(0xff)) < 0) {
+		if (spi_byte(0x44) < 0 || (k = spi_byte(0xff)) < 0) {
 			_setss(0);
 			return(0);
 		}
@@ -151,6 +147,8 @@ spi_rxpacket(struct channel *chp)
 	cli();
 	radio.ms_ticks = myticks;
 	sei();
+	if (csum != 0x00)
+		printf("*** BAD CHECKSUM!\n");
 }
 
 /*

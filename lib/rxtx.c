@@ -61,16 +61,17 @@ libradio_recv(struct channel *chp, uchar_t channo)
 	/*
 	 * First up, check the RX fifo to see if we have a packet.
 	 */
-	libradio_get_int_status();
 	libradio_get_fifo_info(0);
-	printf("1RX FIFO %d\n", radio.rx_fifo);
 	if (radio.rx_fifo >= SI4463_PACKET_LEN) {
 		/*
 		 * There's at least a packet. Go get it!
 		 */
+		PORTC |= 02;
 		spi_rxpacket(chp);
+		PORTC &= ~02;
 		libradio_get_fifo_info(03);
-		printf("2RX FIFO %d\n", radio.rx_fifo);
+		radio.npacket_rx++;
+		radio.saw_rx = 1;
 		/*
 		 * If we caught an IRQ notification, re-enable interrupts now that
 		 * we've pulled the packet.
@@ -79,12 +80,20 @@ libradio_recv(struct channel *chp, uchar_t channo)
 			libradio_irq_enable(1);
 		ret = 1;
 	}
-	if (libradio_request_device_status() != SI4463_STATE_READY &&
+	libradio_set_rx(channo);
+	return(ret);
+}
+
+/*
+ * Put the radio into RX mode.
+ */
+void
+libradio_set_rx(uchar_t channo)
+{
+	if (libradio_request_device_status() == SI4463_STATE_RX &&
 					radio.curr_channel == channo)
-		return(ret);
-	/*
-	 * We're in a READY state. Let's get receiving...
-	 */
+		return;
+	printf("TUNE! ch:%d\n", channo);
 	spi_data[0] = SI4463_START_RX;
 	spi_data[1] = channo;
 	spi_data[2] = 0;		/* CONDITION: Start immediately */
@@ -94,11 +103,7 @@ libradio_recv(struct channel *chp, uchar_t channo)
 	spi_data[6] = SI4463_STATE_READY;
 	spi_data[7] = SI4463_STATE_READY;
 	spi_send(8, 0);
-	radio.saw_rx = 1;
-	radio.npacket_rx++;
 	radio.curr_channel = channo;
-	libradio_get_modem_status();
-	return(ret);
 }
 
 /*

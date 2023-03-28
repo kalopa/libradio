@@ -57,9 +57,6 @@ libradio_handle_packet()
 	 */
 	if (libradio_recv(chp, radio.my_channel)) {
 		printf("Packet RX! (ch%d,tk:%u,len:%d)\n", radio.my_channel, radio.ms_ticks, chp->offset);
-		for (i = 0; i < chp->offset; i++)
-			printf("%x.", chp->payload[i]);
-		putchar('\n');
 		for (i = 0; i < chp->offset;) {
 			pp = (struct packet *)&chp->payload[i];
 			printf("N%d,L%d,C%d\n", pp->node, pp->len, pp->cmd);
@@ -69,6 +66,7 @@ libradio_handle_packet()
 				libradio_command(pp);
 			i += pp->len;
 		}
+		libradio_set_rx(radio.my_channel);
 	}
 }
 

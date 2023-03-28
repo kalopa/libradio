@@ -53,9 +53,8 @@ libradio_request_device_status()
 	spi_data[0] = SI4463_REQUEST_DEVICE_STATE;
 	if (spi_send(1, 2) == 0)
 		return(-1);
-	radio.curr_state = spi_data[0];
 	radio.curr_channel = spi_data[1];
-	return(spi_data[0]);
+	return(radio.curr_state = spi_data[0]);
 }
 
 /*
@@ -208,7 +207,6 @@ libradio_get_fifo_info(uchar_t clrf)
 		return;
 	radio.rx_fifo = spi_data[0];
 	radio.tx_fifo = spi_data[1];
-	printf("FIFO:%d/%d\n", radio.rx_fifo, radio.tx_fifo);
 }
 
 /*

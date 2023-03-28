@@ -120,7 +120,7 @@ main()
 	}
 	printf("IDENT %d/%d/%d/%d\n", OILTANK_CAT1, OILTANK_CAT2, mynum1, mynum2);
 	libradio_init(OILTANK_CAT1, OILTANK_CAT2, mynum1, mynum2);
-	libradio_set_clock(100, 160);
+	libradio_set_clock(10, 160);
 	libradio_irq_enable(1);
 	/*
 	 * Begin the main loop - every clock tick, call the radio loop.
