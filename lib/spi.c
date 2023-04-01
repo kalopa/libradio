@@ -180,7 +180,6 @@ spi_txpacket(struct channel *chp)
 	 * Send out the packet length, minus the time stamp we've already sent.
 	 * Send nulls if we've run out of data.
 	 */
-	printf("SPI.TX(%d,%u,%x)\n", chp->offset, myticks, csum);
 	for (i = 0, cp = chp->payload; i < (SI4463_PACKET_LEN - 3); i++) {
 		if (i < chp->offset)
 			spi_byte(*cp++);
@@ -188,4 +187,5 @@ spi_txpacket(struct channel *chp)
 			spi_byte(0);
 	}
 	_setss(0);
+	printf("SPI.TX(%d,%u,%x)\n", chp->offset, myticks, csum);
 }

@@ -15,7 +15,7 @@ end
 def receive_thread(sp)
   sp.each_line do |line|
     line = line.scrub('.').chomp
-    p line
+    puts "#{Time.now.strftime('%T')}: #{line}"
   end
   puts "RX Done."
 end
@@ -28,12 +28,10 @@ def transmit_thread(sp)
   activate(sp)
   set_time(sp)
   set_date(sp)
-  5.times do |i|
-    set_channel(sp, i)
-  end
+  set_channel(sp, 0)
   while true do
-    sp.puts ">S\r\n"
-    sp.puts ">T\r\n"
+    #sp.puts ">S\r\n"
+    #sp.puts ">T\r\n"
     sleep 5
   end
 end
