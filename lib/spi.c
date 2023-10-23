@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-21, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -180,6 +180,7 @@ spi_txpacket(struct channel *chp)
 	 * Send out the packet length, minus the time stamp we've already sent.
 	 * Send nulls if we've run out of data.
 	 */
+	printf("%x/%x/%x\n", chp->payload[0], chp->payload[1], chp->payload[2]);
 	printf("SPI.TX(%d,%u,%x)\n", chp->offset, myticks, csum);
 	for (i = 0, cp = chp->payload; i < (SI4463_PACKET_LEN - 3); i++) {
 		if (i < chp->offset)
