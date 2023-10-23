@@ -43,7 +43,7 @@
 #include "internal.h"
 #include "control.h"
 
-#define SET_TIME_MODULO		1000
+#define SET_TIME_MODULO		100
 
 struct channel	channels[MAX_RADIO_CHANNELS];
 struct packet	*pp;

@@ -38,7 +38,7 @@
  */
 #define MAX_SPI_BLOCK				20
 
-#define SI4463_PACKET_LEN			48
+#define SI4463_PACKET_LEN			16
 
 #define SI4463_NOP					0x00
 #define SI4463_PART_INFO			0x01
