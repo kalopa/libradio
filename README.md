@@ -252,3 +252,12 @@ These are:
 - C2A-GMR
 
 The modules I'm using are marked 44631B.
+
+
+
+15:22:12: Ichp->state:2 (off7)
+15:22:12: TX:chst:4,off5,chan:0
+15:22:12: 0/5/5
+15:22:12: SPI.TX(7,52502,86)
+15:22:12: TXGood
+15:22:12: TXBack. 2/6

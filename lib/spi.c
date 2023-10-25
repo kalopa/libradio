@@ -187,6 +187,5 @@ spi_txpacket(struct channel *chp)
 			spi_byte(0);
 	}
 	_setss(0);
-	printf("%x/%x/%x\n", chp->payload[0], chp->payload[1], chp->payload[2]);
 	printf("SPI.TX(%d,%u,%x)\n", chp->offset, myticks, csum);
 }

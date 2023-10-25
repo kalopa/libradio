@@ -135,9 +135,9 @@ void
 libradio_irq_enable(uchar_t flag)
 {
 	irq_fired = 0;
-	EICRA = 0;
+	EICRA = 02;
 	if ((radio.catch_irq = flag) == 0)
-		EIMSK = 0;
+		EIMSK = 01;
 	else
 		EIMSK = 01;
 }

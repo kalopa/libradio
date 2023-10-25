@@ -137,7 +137,6 @@ tx_check_queues()
 	chp->payload[chp->offset++] = 0;
 	chp->payload[chp->offset++] = 0;
 	if (libradio_send(chp, channo) != 0) {
-		printf("TXGood\n");
 		chp->state = LIBRADIO_CHSTATE_EMPTY;
 		chp->priority = 0;
 	}
