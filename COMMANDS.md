@@ -96,7 +96,7 @@ should use to transmit its status.
 by the controller.
 
 Multiple different types of custom status messages are supported.
-The first two (RADIO_STATUS_DYNAMIC and RADIO_STATUS_STATIC) need
+The first two (RADIO\_STATUS\_DYNAMIC and RADIO\_STATUS\_STATIC) need
 to be implemented by the client.
 Any additional status types are considered application-specific.
 Static status includes things like the four-byte device ID, and
@@ -116,7 +116,7 @@ Payload: 2 bytes: cc nn tt
 The command requires a response channel (*cc*),
 a node address (*nn*), and a status type (*tt*).
 The response packet from the client will have a command
-type of RADIO_STATUS_RESPONSE and will be broadcast on
+type of RADIO\_STATUS\_RESPONSE and will be broadcast on
 the specified channel.
 
 ## Command: RADIO\_CMD\_ACTIVATE

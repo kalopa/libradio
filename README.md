@@ -40,7 +40,7 @@ The library operates a state machine with the following states:
 
 * LIBRADIO\_STATE\_STARTUP
 * LIBRADIO\_STATE\_ERROR
-* LIBRADIO\_STATE\_LOW_BATTERY
+* LIBRADIO\_STATE\_LOW\_BATTERY
 * LIBRADIO\_STATE\_COLD
 * LIBRADIO\_STATE\_WARM
 * LIBRADIO\_STATE\_LISTEN
@@ -195,14 +195,14 @@ the time of day is not known.
 When the **tens_of_minutes** value is set to 0xff, then all
 time of day calculations are stopped.
 Also, the interrupt service routine which manages the time of
-day will also stop incrementing the **ms\_ticks** value as
+day will also stop incrementing the **ms_ticks** value as
 well.
 
 The third and final variable is the **date** variable which is
 sixteen bits and application-specific.
 The value is given to the main controller and is rebroadcast
 throughout the network.
-As it is not used by the library nore the controller, it can
+As it is not used by the library nor the controller, it can
 mean anything.
 In fact, it can be ignored, if desired.
 An advised (but not enforced) convention might be to set this
@@ -251,13 +251,4 @@ These are:
 - C2A-GM
 - C2A-GMR
 
-The modules I'm using are marked 44631B.
-
-
-
-15:22:12: Ichp->state:2 (off7)
-15:22:12: TX:chst:4,off5,chan:0
-15:22:12: 0/5/5
-15:22:12: SPI.TX(7,52502,86)
-15:22:12: TXGood
-15:22:12: TXBack. 2/6
+The modules I'm using for testing are marked 44631B.
