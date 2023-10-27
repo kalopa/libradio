@@ -42,7 +42,7 @@ ASRCS=
 CSRCS=	main.c
 BIN=	oiltank
 
-SERIAL_DEVICE=/dev/cuaU0:38400
+SERIAL_DEVICE=/dev/ttyUSB0:38400
 
 include ../avr.mk
 

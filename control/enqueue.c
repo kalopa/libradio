@@ -52,7 +52,7 @@ void
 enqueue(struct channel *chp, struct packet *pp)
 {
 	if (pp->node == radio.my_node_id ||
-				(pp->cmd == RADIO_CMD_ACTIVATE && radio.my_node_id == 0)) {
+				(pp->cmd == RADIO_CMD_ACTIVATE && radio.state < LIBRADIO_STATE_ACTIVE)) {
 		/*
 		 * This packet is for me. Don't queue it up for transmission.
 		 * Instead, execute the command. Also, free up the channel buffer

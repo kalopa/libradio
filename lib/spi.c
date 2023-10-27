@@ -137,18 +137,22 @@ spi_rxpacket(struct channel *chp)
 	myticks = spi_byte(0) << 8;
 	myticks |= spi_byte(0);
 	csum = spi_byte(0);
-	chp->offset = radio.rx_fifo - 2;
+	chp->offset = radio.rx_fifo - 3;
 	for (i = 0, cp = chp->payload; i < chp->offset; i++, cp++) {
 		*cp = spi_byte(0x00);
 		csum ^= *cp;
 	}
 	_setss(0);
+	/*
+	 * Throw away dud packets.
+	 */
+	if (csum == 0x00) {
+		cli();
+		radio.ms_ticks = myticks;
+		sei();
+	} else
+		chp->offset = 0;
 	printf("SPI.RX(%d,%u,%x)\n", chp->offset, myticks, csum);
-	cli();
-	radio.ms_ticks = myticks;
-	sei();
-	if (csum != 0x00)
-		printf("*** BAD CHECKSUM!\n");
 }
 
 /*
