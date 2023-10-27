@@ -23,15 +23,40 @@ end
 #
 # Writer thread.
 def transmit_thread(sp)
+  device_activated = false
   reset(sp)
   sleep 2
   activate(sp)
-  set_time(sp)
-  set_date(sp)
-  set_channel(sp, 0)
-  while true do
-    #sp.puts ">S\r\n"
-    #sp.puts ">T\r\n"
+  lcount = 0
+  loop do
+    puts "Loop ##{lcount}..."
+    case lcount
+    when 1
+      puts "Set time..."
+      set_time(sp)
+    when 2
+      puts "Set the date..."
+      set_date(sp)
+    when 4
+      puts "Activate channel 0..."
+      set_channel(sp, 0)
+    when 5
+      puts "Activate channel 1..."
+      set_channel(sp, 1)
+    when 6
+      puts "Activate channel 2..."
+      set_channel(sp, 2)
+    end
+    if lcount >= 5 and not device_activated
+      client_activate(sp)
+      #device_activated = true
+    end
+    if (lcount & 01) == 0
+      sp.puts ">S\r\n"
+    else
+      sp.puts ">T\r\n"
+    end
+    lcount += 1
     sleep 5
   end
 end
@@ -39,8 +64,15 @@ end
 #
 #
 def activate(sp)
-  send_command sp, chan: 0, node: 0, cmd: 3, data: [0, 0, 0].flatten
+  send_command sp, chan: 0, node: 0, cmd: 3, data: [0, 1, 0].flatten
 end
+
+#
+# Activate the client device
+def client_activate(sp)
+  send_command sp, chan: 0, node: 0, cmd: 3, data: [1, 3, 0x7f, 0x01, 0, 1].flatten
+end
+
 
 #
 #
@@ -49,7 +81,7 @@ def set_time(sp)
   ticks = ((tstamp.to_f * 100.0) % 60000.0).to_i
   tod = ((tstamp.to_f / 600.0) % 144.0).to_i
   puts "Time: #{tod}-#{ticks}"
-  send_command sp, cmd: 5, data: [ticks % 256, ticks / 256, tod]
+  send_command sp, node: 1, cmd: 5, data: [ticks % 256, ticks / 256, tod]
 end
 
 #
@@ -58,13 +90,13 @@ def set_date(sp)
   tstamp = Time.now
   date = ((tstamp.year - 2000) * 12 + (tstamp.mon - 1)) * 32 + tstamp.day
   puts "Date: #{date}"
-  send_command sp, cmd: 6, data: [date % 256, date / 256]
+  send_command sp, node: 1, cmd: 6, data: [date % 256, date / 256]
 end
 
 #
 #
 def set_channel(sp, channo)
-  send_command sp, chan: 0, node: 0, cmd: 16, data: [channo, 2].flatten
+  send_command sp, chan: 0, node: 1, cmd: 16, data: [channo, 2].flatten
 end
 
 #

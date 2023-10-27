@@ -88,12 +88,11 @@ tx_check_queues()
 		 * Millisecond clock has wrapped around. Time to TX a SET TIME.
 		 */
 		channo = (radio.ms_ticks / SET_TIME_MODULO) % MAX_RADIO_CHANNELS;
-		channo = 0;
 		chp = &channels[channo];
 		if (chp->state >= LIBRADIO_CHSTATE_EMPTY && chp->offset < (MAX_FIFO_SIZE - 8)) {
 			struct packet *pp;
 
-			printf("Ichp->state:%d (off%d)\n", chp->state, chp->offset);
+			printf("C%d>state:%d (off%d)\n", channo, chp->state, chp->offset);
 			/*
 			 * Send a "tens of minutes" time packet.
 			 */
@@ -140,7 +139,6 @@ tx_check_queues()
 		chp->state = LIBRADIO_CHSTATE_EMPTY;
 		chp->priority = 0;
 	}
-	printf("TXBack. %d/%d\n", chp->state, radio.state);
 	/*
 	 * Now increment the priority of the remaining channels to prevent them
 	 * getting locked out by busy channels at a higher priority.
