@@ -39,22 +39,30 @@ def transmit_thread(sp)
       set_date(sp)
     when 4
       puts "Activate channel 0..."
-      set_channel(sp, 0)
+      set_channel(sp, 0, 2)
     when 5
       puts "Activate channel 1..."
-      set_channel(sp, 1)
+      set_channel(sp, 1, 2)
     when 6
       puts "Activate channel 2..."
-      set_channel(sp, 2)
+      set_channel(sp, 2, 2)
+    when 7
+      puts "Activate channel 3..."
+      set_channel(sp, 3, 1)
     end
-    if lcount >= 5 and not device_activated
-      client_activate(sp)
-      #device_activated = true
-    end
-    if (lcount & 01) == 0
-      sp.puts ">S\r\n"
-    else
-      sp.puts ">T\r\n"
+    if lcount > 9
+      case lcount & 07
+      when 0
+        sp.puts ">S\r\n"
+      when 1
+        sp.puts ">T\r\n"
+      when 2
+        client_activate(sp, [1, 3, 0x7f, 0x01, 0, 1])
+      when 3
+        request_status(sp, 1, 3, 0)
+      when 4
+        request_status(sp, 1, 3, 1)
+      end
     end
     lcount += 1
     sleep 5
@@ -69,10 +77,15 @@ end
 
 #
 # Activate the client device
-def client_activate(sp)
-  send_command sp, chan: 0, node: 0, cmd: 3, data: [1, 3, 0x7f, 0x01, 0, 1].flatten
+def client_activate(sp, args)
+  send_command sp, chan: 0, node: 0, cmd: 3, data: args.flatten
 end
 
+#
+# Request device status
+def request_status(sp, chan, node, type)
+  send_command sp, chan: chan, node: node, cmd: 2, data: [3, 1, type].flatten
+end
 
 #
 #
@@ -95,8 +108,8 @@ end
 
 #
 #
-def set_channel(sp, channo)
-  send_command sp, chan: 0, node: 1, cmd: 16, data: [channo, 2].flatten
+def set_channel(sp, channo, state)
+  send_command sp, chan: 0, node: 1, cmd: 16, data: [channo, state].flatten
 end
 
 #
@@ -107,7 +120,7 @@ def send_command(sp, opts = {})
   str = ">#{(opts[:chan] + 65).chr}#{opts[:node]}:#{opts[:cmd]}"
   str += ":#{opts[:data].join(',')}" unless opts[:data].nil?
   str += ".\r\n"
-  puts "SEND: [#{str}]"
+  puts "SEND: [#{str.chomp}]"
   sp.puts str
 end
 
