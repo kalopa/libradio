@@ -57,7 +57,7 @@ uchar_t		elapsed_second;
 /*
  * This function is called every clock tick (every 10ms) or one hundred
  * times per second. Increment the millisecond clock, and if we've passed the
- * tens of minutes, then increment that. The ToM parks itself at 145 which is
+ * tens of minutes, then increment that. The ToM parks itself at 255 which is
  * an illegal value used at init, to let us know we don't actually know what
  * time it is. We also call the heartbeat to flash the LED appropriately.
  * This should really be called every 62.5ms. We use main_thread so the main
@@ -95,6 +95,11 @@ clocktick()
 		radio.main_ticks = 5;
 	}
 	/*
+	 * If we are silent, waiting for a receive packet, use this timer.
+	 */
+	if (radio.recv_ticks != 0)
+		radio.recv_ticks--;
+	/*
 	 * Increment the seconds counter in case the main loop needs to do
 	 * periodic work (like check the battery).
 	 */
@@ -106,7 +111,8 @@ clocktick()
 }
 
 /*
- * Wait for the main tick to occur. Called from main code (not ISR).
+ * Wait for the main tick to occur. Called from main code (not ISR). Generally
+ * this is a 50ms timer giving a 20Hz main loop.
  */
 int
 libradio_get_thread_run()
@@ -139,8 +145,7 @@ libradio_elapsed_second()
 void
 libradio_set_song(uchar_t new_state)
 {
-	if (new_state <= LIBRADIO_STATE_ACTIVE)
-		radio.heart_beat = songs[new_state];
-	else
-		radio.heart_beat = songs[LIBRADIO_STATE_ACTIVE];
+	if (new_state > LIBRADIO_STATE_ACTIVE)
+		new_state = LIBRADIO_STATE_ACTIVE;
+	radio.heart_beat = songs[new_state];
 }

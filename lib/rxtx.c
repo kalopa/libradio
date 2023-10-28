@@ -93,7 +93,7 @@ libradio_set_rx(uchar_t channo)
 	if (libradio_request_device_status() == SI4463_STATE_RX &&
 					radio.curr_channel == channo)
 		return;
-	printf("TUNE! ch:%d\n", channo);
+	printf("Tune Ch%d\n", channo);
 	spi_data[0] = SI4463_START_RX;
 	spi_data[1] = channo;
 	spi_data[2] = 0;		/* CONDITION: Start immediately */

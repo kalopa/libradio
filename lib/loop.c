@@ -63,8 +63,8 @@ libradio_rxloop()
 	PORTC |= 01;
 	while (irq_fired == 0 && libradio_get_thread_run() == 0)
 		_sleep();
-        printf("IRQ%d\n", irq_fired);
 	if (irq_fired) {
+		printf("IRQ%d\n", irq_fired);
 		libradio_get_int_status();
 		libradio_irq_enable(1);
 	}

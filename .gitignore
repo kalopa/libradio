@@ -10,6 +10,7 @@
 *.obj
 *.elf
 *.lst
+*.swp
 
 # Linker output
 *.ilk

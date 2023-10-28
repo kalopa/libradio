@@ -56,12 +56,12 @@ main()
 
 	/*
 	 * Timer1 is the workhorse. It is set up with a divide-by-64 to free-run
-	 * (CTC mode) at 250kHz. We use OCR1A (set to 24999) to derive a timer
-	 * frequency of 10Hz (0.625Hz in low power mode).
+	 * (CTC mode) at 250kHz. We use OCR1A (set to 2499) to derive a timer
+	 * frequency of 100Hz.
 	 */
 	_setled(1);
 	TCNT1 = 0;
-	OCR1A = 24999;
+	OCR1A = 2499;
 	TCCR1A = 0;
 	power_mode(1);
 	/*
@@ -85,11 +85,13 @@ main()
 	libradio_init(0, 0, 0, 0);
 	libradio_set_clock(10, 10);
 	libradio_irq_enable(1);
-	radio.my_channel = radio.curr_channel = radio.my_node_id = 0;
+	radio.my_channel = radio.curr_channel = 1;
+	radio.my_node_id = 0;
 	libradio_set_song(LIBRADIO_STATE_ACTIVE);
 	/*
 	 * Begin the main loop - every clock tick, call the radio loop.
 	 */
+	printf("Begin...");
 	while (1) {
 		/*
 		 * Call the libradio function to see if there's anything to do. This
@@ -97,7 +99,8 @@ main()
 		 */
 		while (irq_fired == 0 && libradio_get_thread_run() == 0)
 			_sleep();
-		printf("I%d-%u\n", irq_fired, radio.ms_ticks);
+		if (libradio_elapsed_second() && radio.tens_of_minutes > 143)
+			radio.tens_of_minutes = 0;
 		if (irq_fired) {
 			libradio_get_int_status();
 			libradio_irq_enable(1);
@@ -105,8 +108,8 @@ main()
 		radio.main_ticks = 1000;
 		if (libradio_recv(chp, radio.my_channel) == 0)
 			continue;
-		printf("Packet RX! (ch%d,tk:%u,len:%d)\n", radio.my_channel, radio.ms_ticks, chp->offset);
-		printf("N%dL%dC%d", chp->payload[0], chp->payload[1], chp->payload[2]);
+		printf("RX (ch%d,tk:%u,len:%d)\n", radio.my_channel, radio.ms_ticks, chp->offset);
+		printf("No%dLn%dCm%d:", chp->payload[0], chp->payload[1], chp->payload[2]);
 		for (i = 3; i < chp->offset; i++)
 			printf(" 0x%x", chp->payload[i] & 0xff);
 		putchar('\n');

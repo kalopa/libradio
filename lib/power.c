@@ -87,7 +87,6 @@ libradio_power_up()
 	libradio_ircal();
 	libradio_request_device_status();
 	libradio_get_fifo_info(03);
-	printf("RT%x\n", SREG);
 	printf("Radio is now Active.\n");
 	radio.radio_active = 1;
 	return(0);
