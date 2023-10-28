@@ -39,7 +39,7 @@
 DEVICE=	atmega328p
 
 ASRCS=
-CSRCS=	main.c
+CSRCS=	oiltank.c
 BIN=	oiltank
 
 SERIAL_DEVICE=/dev/ttyUSB0:38400
