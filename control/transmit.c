@@ -85,7 +85,8 @@ tx_check_queues()
 	chp = NULL;
 	if (modulo < last_modulo) {
 		/*
-		 * Millisecond clock has wrapped around. Time to TX a SET TIME.
+		 * Millisecond clock has wrapped around. Time to TX a SET TIME. This
+		 * will generally happen every 5 seconds (SET_TIME_MODULO in ms_ticks).
 		 */
 		channo = (radio.ms_ticks / SET_TIME_MODULO) % MAX_RADIO_CHANNELS;
 		chp = &channels[channo];
@@ -132,7 +133,7 @@ tx_check_queues()
 	 * We have a channel ready for transmission. Send it now...
 	 */
 	channo = chp - channels;
-	printf("TX:chst:%d,off%d,chan:%d\n", chp->state, chp->offset, channo);
+	printf("TX%d:chst:%d,off%d,chan:%d\n", channo, chp->state, chp->offset);
 	chp->payload[chp->offset++] = 0;
 	chp->payload[chp->offset++] = 0;
 	if (libradio_send(chp, channo) != 0) {
