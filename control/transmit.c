@@ -83,6 +83,8 @@ tx_check_queues()
 	 */
 	modulo = radio.ms_ticks % SET_TIME_MODULO;
 	chp = NULL;
+	if (irq_fired)
+		printf("IRQ%d!\n", irq_fired);
 	if (modulo < last_modulo) {
 		/*
 		 * Millisecond clock has wrapped around. Time to TX a SET TIME. This
