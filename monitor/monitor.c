@@ -85,20 +85,31 @@ main()
 	libradio_init(0, 0, 0, 0);
 	libradio_set_clock(10, 10);
 	libradio_irq_enable(1);
-	radio.my_channel = radio.curr_channel = 1;
+	radio.my_channel = radio.curr_channel = 0;
 	radio.my_node_id = 0;
 	libradio_set_song(LIBRADIO_STATE_ACTIVE);
 	/*
 	 * Begin the main loop - every clock tick, call the radio loop.
 	 */
-	printf("Begin...");
+	printf("Listening on channel %d.\n", radio.my_channel);
 	while (1) {
 		/*
 		 * Call the libradio function to see if there's anything to do. This
 		 * routine only returns after a sleep or if the main clock has ticked.
 		 */
-		while (irq_fired == 0 && libradio_get_thread_run() == 0)
+		while (irq_fired == 0 && libradio_get_thread_run() == 0) {
+			if (!sio_iqueue_empty()) {
+				if ((i = getchar()) >= '0' && i <= '9') {
+					i -= '0';
+					printf("Switch to channel %d\n", i);
+					radio.my_channel = i;
+				} else {
+					if ((i = getchar()) == '\r' || i == '\n')
+						putchar('\n');
+				}
+			}
 			_sleep();
+		}
 		if (libradio_elapsed_second() && radio.tens_of_minutes > 143)
 			radio.tens_of_minutes = 0;
 		if (irq_fired) {

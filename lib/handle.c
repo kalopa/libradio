@@ -39,8 +39,8 @@
 #include "libradio.h"
 #include "internal.h"
 
-struct channel	recvchan;
-struct channel	replychan;
+struct channel	rxchan;
+struct channel	txchan;
 
 /*
  *
@@ -49,7 +49,7 @@ void
 libradio_handle_packet()
 {
 	int i;
-	struct channel *chp = &recvchan;
+	struct channel *chp = &rxchan;
 	struct packet *pp;
 
 	/*
@@ -72,12 +72,17 @@ libradio_handle_packet()
 
 /*
  * Send a response packet to the remote channel/address.
+
+ >> Send status type 1 to 1
+TX Response 9 on C1N1, len: 6
+Rstate:0 (off0)
+
  */
 void
 libradio_send_response(uchar_t cmd, uchar_t chan, uchar_t addr, uchar_t len, uchar_t buffer[])
 {
 	int i;
-	struct channel *chp = &replychan;
+	struct channel *chp = &txchan;
 	struct packet *pp;
 	static int last_chan = 0;
 
@@ -92,6 +97,8 @@ libradio_send_response(uchar_t cmd, uchar_t chan, uchar_t addr, uchar_t len, uch
 	} else {
 		if (chp->state == LIBRADIO_CHSTATE_EMPTY)
 			chp->offset = 0;
+		if (chp->offset > 24)
+			return;
 	}
 	chp->state = LIBRADIO_CHSTATE_TRANSMIT;
 	chp->priority = 10;
@@ -105,7 +112,6 @@ libradio_send_response(uchar_t cmd, uchar_t chan, uchar_t addr, uchar_t len, uch
 	chp->payload[chp->offset++] = 0;
 	chp->payload[chp->offset++] = 0;
 	if (libradio_send(chp, chan) != 0) {
-		printf("TXRespOK.\n");
 		chp->state = LIBRADIO_CHSTATE_EMPTY;
 		chp->priority = 0;
 	}

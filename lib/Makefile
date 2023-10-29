@@ -39,7 +39,8 @@
 
 DEVICE=	atmega328p
 
-ASRCS=	locore.S setled.S setss.S
+ASRCS=	locore.S ioinit.S radio_irq.S setled.S \
+	setss.S spi_irq.S testpt.S watchdog.S
 CSRCS=	init.c loop.c state.c handle.c command.c \
 	rxtx.c power.c radio.c clock.c spi.c debug.c
 
@@ -50,9 +51,13 @@ all:	$(LIBRADIO)
 install: $(LIBRADIO)
 
 clean:
-	rm -f $(LIBRADIO) $(OBJS) *.lst errs
+	rm -f $(LIBRADIO) $(OBJS) *.lst tags errs
+
+tags:
+	ctags *.[ch]
 
 $(LIBRADIO):	$(OBJS)
 	$(AR) cru $(LIBRADIO) $?
+	cp $(LIBRADIO) ..
 
 $(OBJS):	internal.h radio_config.h ../libradio.h

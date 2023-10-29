@@ -64,7 +64,7 @@ __vectors:
 	jmp		empty				; Timer 2 Compare Match B
 	jmp		empty				; Timer 2 Overflow
 	jmp		empty				; Timer 1 Capture Event
-	jmp		clock_irq			; Timer 1 Compare Match A
+	jmp		_clk_int			; Timer 1 Compare Match A
 	jmp		empty				; Timer 1 Compare Match B
 	jmp		empty				; Timer 1 Counter Overflow
 	jmp		empty				; Timer 0 Compare Match A
@@ -82,80 +82,12 @@ __vectors:
 ;
 empty:
 	reti	 					; Return from interrupt
-;
-; Handle a clock tick.
-clock_irq:
-	push	r24					; Save the status register
-	in		r24,_SFR_IO_ADDR(SREG)
-	push	r24
-	push	r25					; Save the working regs
-;
-	push	r18					; Save the temporary regs
-	push	r19
-	push	r26
-	push	r27					; Save the temporary regs
-	call	clocktick			; Call the main clock tick
-	pop		r27					; Restore the registers
-	pop		r26
-	pop		r19
-	pop		r18
-;
-irq_done:
-	pop		r25					; Restore the status register
-	pop		r24
-	out		_SFR_IO_ADDR(SREG),r24
-	pop		r24
-	reti						; Return from interrupt
-;
-; Radio module interrupt.
-radio_irq:
-	push	r24					; Save the status register
-	in		r24,_SFR_IO_ADDR(SREG)
-	push	r24
-	push	r25					; Save the working regs
-;
-	ldi		r24,1
-	out		_SFR_IO_ADDR(EIFR),r24		; Clear the interrupt
-	lds		r24,irq_fired
-	inc		r24
-	sts		irq_fired,r24
-;	ldi		r24,0
-;	out		_SFR_IO_ADDR(EIMSK),r24		; Disable it too (for now)
-;
-	rjmp	irq_done			; Finished.
-;
-; Serial Peripheral Interface (SPI) interrupt.
-spi_irq:
-	reti
+	jmp		_ioinit				; Need to pull this in, now.
 	.endfunc
 ;
 ; Define the heap_end for malloc()
 	.section .init0,"ax",@progbits
 	.weak	__heap_end
 	.set	__heap_end, 0
-;
-; void _ioinit();
-;
-; Configure the I/O pins as appropriate (called from the reset code).
-	.text
-	.section .init4,"ax",@progbits
-	.global	_ioinit
-	.func	_ioinit
-_ioinit:
-	ldi		r16,0xee
-	ldi		r17,0x02
-	out		_SFR_IO_ADDR(PORTB),r17				; PORTB=0000 0010
-	out		_SFR_IO_ADDR(DDRB),r16				; DDRB =OOOI OOOI
-
-	ldi		r16,0x37
-	ldi		r17,0x00
-	out		_SFR_IO_ADDR(PORTC),r17				; PORTC=0000 0000
-	out		_SFR_IO_ADDR(DDRC),r16				; DDRC =IIOO IOOO
-
-	ldi		r16,0xfa
-	out		_SFR_IO_ADDR(PORTD),r17				; PORTD=0000 0000
-	out		_SFR_IO_ADDR(DDRD),r16				; DDRD =OOOO OIOI
-	ret
-	.endfunc
 ;
 ; Fin

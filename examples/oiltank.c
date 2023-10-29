@@ -55,7 +55,7 @@
 #include "libradio.h"
 
 #define FW_VERSION_H	1
-#define FW_VERSION_L	1
+#define FW_VERSION_L	5
 
 /*
  * The two 8-bit codes define an overall category of device and a subcategory
@@ -184,29 +184,36 @@ power_mode(uchar_t hi_flag)
 
 /*
  * Report oiltank status back to the requested receiver.
+RX (ch3,tk:32731,len:13)
+No1Ln9Cm9: 0x6 0x0 0x0 0x3 0x20 0x1 0x0 0x0 0x0 0x0
+SPI.RX(13,32931,0)
+Tune Ch3
+RX (ch3,tk:32931,len:13)
+No1Ln10Cm9: 0x7f 0x1 0x0 0x1 0x1 0x1 0x0 0x0 0x0 0x0
  */
 int
 fetch_status(uchar_t status_type, uchar_t status[], int maxlen)
 {
-	if (maxlen < 6)
+	if (maxlen < 7)
 		return(0);
+	status[0] = status_type;
 	switch (status_type) {
 	case RADIO_STATUS_DYNAMIC:
-		status[0] = libradio_get_state();
-		status[1] = (battery_voltage >> 8) & 0xff;
-		status[2] = (battery_voltage & 0xff);
-		status[3] = (oil_level >> 8) & 0xff;
-		status[4] = (oil_level & 0xff);
-		return(5);
+		status[1] = libradio_get_state();
+		status[2] = (battery_voltage >> 8) & 0xff;
+		status[3] = (battery_voltage & 0xff);
+		status[4] = (oil_level >> 8) & 0xff;
+		status[5] = (oil_level & 0xff);
+		return(6);
 
 	case RADIO_STATUS_STATIC:
-		status[0] = OILTANK_CAT1;
-		status[1] = OILTANK_CAT2;
-		status[2] = mynum1;
-		status[3] = mynum2;
-		status[4] = FW_VERSION_H;
-		status[5] = FW_VERSION_L;
-		return(6);
+		status[1] = OILTANK_CAT1;
+		status[2] = OILTANK_CAT2;
+		status[3] = mynum1;
+		status[4] = mynum2;
+		status[5] = FW_VERSION_H;
+		status[6] = FW_VERSION_L;
+		return(7);
 	}
 	return(0);
 }

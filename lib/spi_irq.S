@@ -32,24 +32,14 @@
 ; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ;
 ; ABSTRACT
-; The setled function is used to turn on and off an onboard LED so we
-; can see what the code is doing.
 ;
 #include <avr/io.h>
 ;
-; void _setled(uchar_t);
-;
-; Turn on or off the LED.
+; Serial Peripheral Interface (SPI) interrupt.
 	.text
 	.section .init4,"ax",@progbits
-	.global	_setled
-	.func	_setled
-_setled:
-	tst		r24					; LED on or off?
-	breq	1f
-	cbi		_SFR_IO_ADDR(PORTD),3				; Turn on the LED
-	ret
-1:
-	sbi		_SFR_IO_ADDR(PORTD),3				; Turn off the LED
-	ret
+	.global	spi_irq
+	.func	spi_irq
+spi_irq:
+	reti
 	.endfunc

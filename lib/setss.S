@@ -46,6 +46,8 @@
 ; actually sees the edge, we wait about 0.5uS for the rise time. Really
 ; we only need to do this if we're planning on setting it low again
 ; immediately afterwards, but this is simpler than a lot of tests.
+	.text
+	.section .init4,"ax",@progbits
 	.global	_setss
 	.func	_setss
 _setss:
@@ -66,5 +68,3 @@ _setss:
 	nop
 	ret
 	.endfunc
-;
-; Fin

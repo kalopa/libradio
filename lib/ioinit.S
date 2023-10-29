@@ -32,24 +32,27 @@
 ; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ;
 ; ABSTRACT
-; The setled function is used to turn on and off an onboard LED so we
-; can see what the code is doing.
 ;
 #include <avr/io.h>
 ;
-; void _setled(uchar_t);
-;
-; Turn on or off the LED.
+; void _ioinit();
 	.text
 	.section .init4,"ax",@progbits
-	.global	_setled
-	.func	_setled
-_setled:
-	tst		r24					; LED on or off?
-	breq	1f
-	cbi		_SFR_IO_ADDR(PORTD),3				; Turn on the LED
-	ret
-1:
-	sbi		_SFR_IO_ADDR(PORTD),3				; Turn off the LED
+	.global	_ioinit
+	.func	_ioinit
+_ioinit:
+	ldi		r16,0xee
+	ldi		r17,0x02
+	out		_SFR_IO_ADDR(PORTB),r17				; PORTB=0000 0010
+	out		_SFR_IO_ADDR(DDRB),r16				; DDRB =OOOI OOOI
+
+	ldi		r16,0x37
+	ldi		r17,0x00
+	out		_SFR_IO_ADDR(PORTC),r17				; PORTC=0000 0000
+	out		_SFR_IO_ADDR(DDRC),r16				; DDRC =IIOO IOOO
+
+	ldi		r16,0xfa
+	out		_SFR_IO_ADDR(PORTD),r17				; PORTD=0000 0000
+	out		_SFR_IO_ADDR(DDRD),r16				; DDRD =OOOO OIOI
 	ret
 	.endfunc

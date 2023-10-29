@@ -117,7 +117,8 @@ libradio_send(struct channel *chp, uchar_t channo)
 {
 	if (!radio.radio_active && libradio_power_up() < 0)
 		return(0);
-	if (libradio_request_device_status() != SI4463_STATE_READY)
+	libradio_request_device_status();
+	if (radio.curr_state != SI4463_STATE_READY && radio.curr_state != SI4463_STATE_RX)
 		return(0);
 	libradio_get_fifo_info(0);
 	if (radio.tx_fifo < SI4463_PACKET_LEN)

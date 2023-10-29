@@ -32,24 +32,31 @@
 ; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ;
 ; ABSTRACT
-; The setled function is used to turn on and off an onboard LED so we
-; can see what the code is doing.
 ;
 #include <avr/io.h>
 ;
-; void _setled(uchar_t);
-;
-; Turn on or off the LED.
+; Radio module interrupt.
 	.text
 	.section .init4,"ax",@progbits
-	.global	_setled
-	.func	_setled
-_setled:
-	tst		r24					; LED on or off?
-	breq	1f
-	cbi		_SFR_IO_ADDR(PORTD),3				; Turn on the LED
-	ret
-1:
-	sbi		_SFR_IO_ADDR(PORTD),3				; Turn off the LED
-	ret
+	.global	radio_irq
+	.func	radio_irq
+radio_irq:
+	push	r24					; Save the status register
+	in		r24,_SFR_IO_ADDR(SREG)
+	push	r24
+	push	r25					; Save the working regs
+;
+	ldi		r24,1
+	out		_SFR_IO_ADDR(EIFR),r24		; Clear the interrupt
+	lds		r24,irq_fired
+	inc		r24
+	sts		irq_fired,r24
+;	ldi		r24,0
+;	out		_SFR_IO_ADDR(EIMSK),r24		; Disable it too (for now)
+;
+	pop		r25					; Restore the status register
+	pop		r24
+	out		_SFR_IO_ADDR(SREG),r24
+	pop		r24
+	reti						; Return from interrupt
 	.endfunc

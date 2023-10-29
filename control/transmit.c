@@ -83,8 +83,6 @@ tx_check_queues()
 	 */
 	modulo = radio.ms_ticks % SET_TIME_MODULO;
 	chp = NULL;
-	if (irq_fired)
-		printf("IRQ%d!\n", irq_fired);
 	if (modulo < last_modulo) {
 		/*
 		 * Millisecond clock has wrapped around. Time to TX a SET TIME. This
@@ -135,7 +133,7 @@ tx_check_queues()
 	 * We have a channel ready for transmission. Send it now...
 	 */
 	channo = chp - channels;
-	printf("TX%d:chst:%d,off%d,chan:%d\n", channo, chp->state, chp->offset);
+	printf("TX%d:chst:%d,off%d\n", channo, chp->state, chp->offset);
 	chp->payload[chp->offset++] = 0;
 	chp->payload[chp->offset++] = 0;
 	if (libradio_send(chp, channo) != 0) {

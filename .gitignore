@@ -1,4 +1,5 @@
 # Workspaces
+.DS_Store
 /.vscode
 *-workspace
 # Prerequisites
@@ -33,6 +34,7 @@
 libradiod
 control/radiocon
 examples/oiltank
+monitor/monitor
 
 #
 # Documentation

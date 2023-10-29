@@ -76,12 +76,12 @@ EFUSE?=0xfc
 ASFLAGS= -mmcu=$(DEVICE) -I$(AVR)
 CFLAGS=	-Wall -O2 -mmcu=$(DEVICE) -I$(AVR) -I..
 LDFLAGS=-nostartfiles -u __vectors -mmcu=$(DEVICE) -L$(AVR) -Wl,--section-start=.bstrap0=0x7e00
-LIBS=	-L../lib -lradio -lavr.$(DEVICE) 
+LIBS=	-L../lib -lradio -lavr.$(DEVICE)
 
 all:	$(BIN)
 
 clean:
-	rm -f $(BIN) $(OBJS) $(FIRMWARE) $(EXTRA_CLEAN) *.lst srclist.ps srclist.pdf errs
+	rm -f $(BIN) $(OBJS) $(FIRMWARE) $(EXTRA_CLEAN) *.lst srclist.ps srclist.pdf tags errs
 
 program: $(FIRMWARE)
 	sudo avrdude -p $(DEVICE) -c $(PROG) -U flash:w:$(FIRMWARE):i

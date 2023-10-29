@@ -64,7 +64,6 @@ libradio_rxloop()
 	while (irq_fired == 0 && libradio_get_thread_run() == 0)
 		_sleep();
 	if (irq_fired) {
-		printf("IRQ%d\n", irq_fired);
 		libradio_get_int_status();
 		libradio_irq_enable(1);
 	}
