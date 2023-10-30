@@ -152,7 +152,6 @@ spi_rxpacket(struct channel *chp)
 		sei();
 	} else
 		chp->offset = 0;
-	printf("SPI.RX(%d,%u,%x)\n", chp->offset, myticks, csum);
 }
 
 /*
@@ -191,5 +190,4 @@ spi_txpacket(struct channel *chp)
 			spi_byte(0);
 	}
 	_setss(0);
-	printf("SPI.TX(%d,%u,%x)\n", chp->offset, myticks, csum);
 }
