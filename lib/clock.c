@@ -88,17 +88,14 @@ clocktick()
 		}
 	}
 	/*
-	 * Kick the main thread, if appropriate.
+	 * Kick the main thread, if appropriate. 'main_ticks' and
+	 * 'tick_count' are always in terms of the clock frequency at
+	 * the time.
 	 */
 	if (radio.main_ticks != 0 && --radio.main_ticks == 0) {
 		thread_ok = 1;
-		radio.main_ticks = 5;
+		radio.main_ticks = radio.tick_count;
 	}
-	/*
-	 * If we are silent, waiting for a receive packet, use this timer.
-	 */
-	if (radio.recv_ticks != 0)
-		radio.recv_ticks--;
 	/*
 	 * Increment the seconds counter in case the main loop needs to do
 	 * periodic work (like check the battery).
@@ -111,11 +108,36 @@ clocktick()
 }
 
 /*
+ * When main_ticks expires, the new value is set to tick_count. Also,
+ * if the main_ticks counter isn't running, it is started here.
+ * Note that main_ticks actually counts clock interrupts, and is not
+ * calibrated against ms_ticks (which tracks real-time). So you need
+ * to pre-compute the number of milliseconds before calling the
+ * function. For example, in fast mode, every clock tick is 10ms. Calling
+ * set_delay with a value of 65535 will cause the delay look to wait for
+ * 655 seconds (or around 11 minutes). Setting the same value in slow
+ * mode with a clock tick happening every 160ms, results in an almost
+ * three-hour delay. To avoid throwing long-ints around when they're
+ * (mostly) not needed, it's up to the caller to figure out which mode
+ * and adjust accordingly.
+ */
+void
+libradio_set_delay(uint_t delay)
+{
+	radio.tick_count = delay;
+	cli();
+	if (radio.main_ticks == 0)
+		radio.main_ticks = delay;
+	sei();
+}
+
+/*
  * Wait for the main tick to occur. Called from main code (not ISR). Generally
- * this is a 50ms timer giving a 20Hz main loop.
+ * this is a 50ms timer giving a 20Hz main loop. The idea is that you can
+ * adjust this delay (see previous function) as needed.
  */
 int
-libradio_get_thread_run()
+libradio_tick_wait()
 {
 	int old_value = thread_ok;
 

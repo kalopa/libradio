@@ -81,21 +81,23 @@ main()
 {
 	int tlsecs;
 
+	_setled(1);
+	cli();
 	/*
 	 * Timer1 is the workhorse. It is set up with a divide-by-64 to free-run
 	 * (CTC mode) at 250kHz. We use OCR1A (set to 24999) to derive a timer
-	 * frequency of 10Hz (0.625Hz in low power mode).
+	 * frequency of 10Hz (100ms per tick) and 0.625Hz in low power mode.
 	 */
-	_setled(1);
 	TCNT1 = 0;
 	OCR1A = 24999;
 	TCCR1A = 0;
-	power_mode(1);
+	TCCR1B = (1<<WGM12)|(1<<CS11)|(1<<CS10);
+	TCCR1C = 0;
+	TIMSK1 = (1<<OCIE1A);
 	/*
 	 * Set the baud rate and configure the USART. Our chosen baud rate is
 	 * 38.4kbaud (with a 16MHz crystal).
 	 */
-	cli();
 	UBRR0 = 25;
 	UCSR0B = (1<<RXCIE0)|(1<<RXEN0)|(1<<TXEN0);
 	UCSR0C = (1<<UCSZ01)|(1<<UCSZ00);
@@ -157,39 +159,7 @@ operate(struct packet *pp)
 }
 
 /*
- * Call-back function used to reduce power on the device and also slow down
- * the clock timer. Called when the system enters one of the two low power
- * states. In this case, the high speed clock has a period of 100ms (/64
- * divider) and the low speed clock has a period of 1.6s (/1024 divider).
- * This is also a good place to turn off unnecessary external hardware, if
- * possible. The timer will "glitch" in that the TCNT1 count is reset each
- * time this function is called, so it should only be called when appropriate.
- */
-void
-power_mode(uchar_t hi_flag)
-{
-	cli();
-	/*
-	 * Fast has CS1n = 3 (/64) and slow CS1n = 5 (/1024).
-	 */
-	if (hi_flag)
-		TCCR1B = (1<<WGM12)|(1<<CS11)|(1<<CS10);
-	else
-		TCCR1B = (1<<WGM12)|(1<<CS12)|(1<<CS10);
- 	TCCR1C = 0;
-	TIMSK1 = (1<<OCIE1A);
-	sei();
-}
-
-
-/*
  * Report oiltank status back to the requested receiver.
-RX (ch3,tk:32731,len:13)
-No1Ln9Cm9: 0x6 0x0 0x0 0x3 0x20 0x1 0x0 0x0 0x0 0x0
-SPI.RX(13,32931,0)
-Tune Ch3
-RX (ch3,tk:32931,len:13)
-No1Ln10Cm9: 0x7f 0x1 0x0 0x1 0x1 0x1 0x0 0x0 0x0 0x0
  */
 int
 fetch_status(uchar_t status_type, uchar_t status[], int maxlen)

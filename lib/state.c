@@ -57,7 +57,7 @@ libradio_get_state()
 void
 libradio_set_state(uchar_t new_state)
 {
-	long wait_ticks = 5;
+	long ticks;
 
 	if (new_state != LIBRADIO_STATE_STARTUP && radio.state == new_state)
 		return;
@@ -71,10 +71,11 @@ libradio_set_state(uchar_t new_state)
 		 * for 15 or 60 minutes depending.
 		 */
 		power_mode(0);
-		radio.period = radio.slow_period;
 		radio.tens_of_minutes = 0xff;
-		wait_ticks = (new_state == LIBRADIO_STATE_WARM) ? 15*60*100L : 60*60*100L;
-		wait_ticks /= (long )radio.slow_period;
+		ticks = (new_state == LIBRADIO_STATE_WARM) ? 15*60*100L : 60*60*100L;
+		if ((ticks /= (long )radio.period) > 65535L)
+			ticks = 65535L;
+		libradio_set_delay((int )ticks);
 		break;
 
 	case LIBRADIO_STATE_LISTEN:
@@ -89,7 +90,6 @@ libradio_set_state(uchar_t new_state)
 			 * real-time clock and the time of day.
 			 */
 			power_mode(1);
-			radio.period = radio.fast_period;
 		}
 		/*
 		 * Switch to channel 0, clear the packet flag, and set a timeout
@@ -108,7 +108,7 @@ libradio_set_state(uchar_t new_state)
 		/*
 		 * Some sort of fatal error. Stay in this state for a minute.
 		 */
-		wait_ticks = 60*100L / (long )radio.fast_period;
+		libradio_set_delay((int )(60*100L / (long )radio.period));
 		break;
 
 	default:
@@ -118,12 +118,7 @@ libradio_set_state(uchar_t new_state)
 		 * in seconds).
 		 */
 		power_mode(1);
-		radio.period = radio.fast_period;
 		radio.timeout = 6000;
 		break;
 	}
-	cli();
-	radio.main_ticks = (int )wait_ticks;
-	radio.state = new_state;
-	sei();
 }

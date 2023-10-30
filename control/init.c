@@ -76,22 +76,3 @@ serial_init()
 	//sio_set_direct_mode(1);
 	(void )fdevopen(sio_putc, sio_getc);
 }
-
-/*
- * Set low or high power mode, accordingly.
- */
-void
-power_mode(uchar_t hi_flag)
-{
-	cli();
-	/*
-	 * Fast has CS1n = 3 (/64) and slow CS1n = 5 (/1024).
-	 */
-	if (hi_flag)
-		TCCR1B = (1<<WGM12)|(1<<CS11)|(1<<CS10);
-	else
-		TCCR1B = (1<<WGM12)|(1<<CS12)|(1<<CS10);
- 	TCCR1C = 0;
-	TIMSK1 = (1<<OCIE1A);
-	sei();
-}

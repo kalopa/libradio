@@ -35,7 +35,7 @@
 # Top-level Makefile. Just go down through the subdirectories and build
 # the binaries. Nothing much to see, here. Move along, please!
 #
-DIRS=	lib control examples
+DIRS=	lib control monitor examples
 SRCS=	libradio.h lib/internal.h lib/*.[Sc] control/*.[hc] examples/main.c
 
 all:

@@ -61,13 +61,14 @@ libradio_rxloop()
 	 */
 	printf("\n>>RX.TOP S%d,I%d,RX%d\n", radio.state, irq_fired, radio.saw_rx);
 	PORTC |= 01;
-	while (irq_fired == 0 && libradio_get_thread_run() == 0)
+	while (irq_fired == 0 && libradio_tick_wait() == 0)
 		_sleep();
 	if (irq_fired) {
+		libradio_set_delay(5);
+		libradio_handle_packet();
 		libradio_get_int_status();
 		libradio_irq_enable(1);
 	}
-	radio.main_ticks = 1000;
 	PORTC &= ~01;
 	/*
 	 * Depending on what state we're in, do something useful. For a lot of
@@ -92,7 +93,6 @@ libradio_rxloop()
 		break;
 
 	case LIBRADIO_STATE_LISTEN:
-		libradio_handle_packet();
 #if 0
 		if (--radio.timeout == 0) {
 			/*
@@ -102,7 +102,7 @@ libradio_rxloop()
 			libradio_set_state(radio.saw_rx ? LIBRADIO_STATE_WARM : LIBRADIO_STATE_COLD);
 		}
 #else
-		radio.main_ticks = 100;
+		libradio_set_delay(10);
 #endif
 		break;
 
@@ -110,7 +110,6 @@ libradio_rxloop()
 		/*
 		 * Any active state - check for radio traffic.
 		 */
-		libradio_handle_packet();
 		if (radio.saw_rx) {
 			radio.timeout = 60000;
 			radio.saw_rx = 0;

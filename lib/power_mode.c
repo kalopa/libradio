@@ -41,6 +41,7 @@
 #include <libavr.h>
 
 #include "libradio.h"
+#include "internal.h"
 
 /*
  * Set low or high power mode, accordingly.  Fast has CS1n = 3 (/64)
@@ -52,10 +53,13 @@ void
 power_mode(uchar_t hi_flag)
 {
 	cli();
-	if (hi_flag)
+	if (hi_flag) {
+		radio.period = radio.fast_period;
 		TCCR1B = (1<<WGM12)|(1<<CS11)|(1<<CS10);
-	else
+	} else {
+		radio.period = radio.slow_period;
 		TCCR1B = (1<<WGM12)|(1<<CS12)|(1<<CS10);
+	}
 	TCCR1C = 0;
 	TIMSK1 = (1<<OCIE1A);
 	sei();

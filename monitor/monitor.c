@@ -60,15 +60,17 @@ main()
 	 * frequency of 100Hz.
 	 */
 	_setled(1);
+	cli();
 	TCNT1 = 0;
 	OCR1A = 2499;
 	TCCR1A = 0;
-	power_mode(1);
+	TCCR1B = (1<<WGM12)|(1<<CS11)|(1<<CS10);
+	TCCR1C = 0;
+	TIMSK1 = (1<<OCIE1A);
 	/*
 	 * Set the baud rate and configure the USART. Our chosen baud rate is
 	 * 38.4kbaud (with a 16MHz crystal).
 	 */
-	cli();
 	UBRR0 = 25;
 	UCSR0B = (1<<RXCIE0)|(1<<RXEN0)|(1<<TXEN0);
 	UCSR0C = (1<<UCSZ01)|(1<<UCSZ00);
@@ -83,7 +85,7 @@ main()
 	 * clock period is 100ms (or 10Hz).
 	 */
 	libradio_init(0, 0, 0, 0);
-	libradio_set_clock(10, 10);
+	libradio_set_clock(1, 1);
 	libradio_irq_enable(1);
 	radio.my_channel = radio.curr_channel = 0;
 	radio.my_node_id = 0;
@@ -97,7 +99,7 @@ main()
 		 * Call the libradio function to see if there's anything to do. This
 		 * routine only returns after a sleep or if the main clock has ticked.
 		 */
-		while (irq_fired == 0 && libradio_get_thread_run() == 0) {
+		while (irq_fired == 0 && libradio_tick_wait() == 0) {
 			if (!sio_iqueue_empty()) {
 				if ((i = getchar()) >= '0' && i <= '9') {
 					i -= '0';
@@ -116,7 +118,6 @@ main()
 			libradio_get_int_status();
 			libradio_irq_enable(1);
 		}
-		radio.main_ticks = 1000;
 		if (libradio_recv(chp, radio.my_channel) == 0)
 			continue;
 		printf("RX (ch%d,tk:%u,len:%d)\n", radio.my_channel, radio.ms_ticks, chp->offset);
@@ -128,28 +129,12 @@ main()
 }
 
 /*
- * Call-back function used to reduce power on the device and also slow down
- * the clock timer. Called when the system enters one of the two low power
- * states. In this case, the high speed clock has a period of 100ms (/64
- * divider) and the low speed clock has a period of 1.6s (/1024 divider).
- * This is also a good place to turn off unnecessary external hardware, if
- * possible. The timer will "glitch" in that the TCNT1 count is reset each
- * time this function is called, so it should only be called when appropriate.
+ * In this case, we never take our foot off the gas.
  */
 void
 power_mode(uchar_t hi_flag)
 {
-	cli();
-	/*
-	 * Fast has CS1n = 3 (/64) and slow CS1n = 5 (/1024).
-	 */
-	if (hi_flag)
-		TCCR1B = (1<<WGM12)|(1<<CS11)|(1<<CS10);
-	else
-		TCCR1B = (1<<WGM12)|(1<<CS12)|(1<<CS10);
-	TCCR1C = 0;
-	TIMSK1 = (1<<OCIE1A);
-	sei();
+	return;
 }
 
 /*

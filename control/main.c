@@ -83,7 +83,7 @@ main()
 	 */
 	libradio_set_state(LIBRADIO_STATE_WARM);
 	while (1) {
-		while (libradio_get_thread_run() == 0) {
+		while (libradio_tick_wait() == 0) {
 			/*
 			 * Handle serial data from our upstream overlords.
 			 */

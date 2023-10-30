@@ -88,32 +88,85 @@
 /*
  * Main status. Here is where the various status parameters exchanged with
  * the Si4463 radio are saved.
+ *
+ * state - The current state of the system: LIBRADIO_STATE_{x}
+ * tens_of_minutes - Time of day in 10 minute increments (255 = off)
+ * ms_ticks - Count of 10ms ticks
+ * slow_period - Clock period (in 10ms) running slowly (usually 16)
+ * fast_period - Clock period (in 10ms) running normally (usually 1)
+ * period - No. of 10ms ticks per interrupt (see slow/fast)
+ * heart_beat - Timer used for the LED song
+ * date - Current date (user-defined)
+ * timeout - How long to go from WARM to COLD
+ * all_ticks - No. of clock ticks since boot
+ * main_ticks - When waiting for stuff to happen, set this to the number
+ *   of clock ticks (at whatever clock frequency) to be the wakeup. Used
+ *   by libradio_tick_wait() to figure out if the main_ticks clock has
+ *  expired.
+ * tick_count - This resets main_ticks to be this value, when main_ticks
+ *   expires.
+ * catch_irq - Should we listen for radio IRQs?
+ *
+ * my_channel - My channel number. Zero is the sleepy channel 
+ * curr_channel - Current channel
+ * my_node_id - My NodeID. Zero means "unset"
+ * cat1, cat2 - Two category bytes (see README) 
+ * num1,  num2 - Two instance bytes (see README)
+ *
+ * chip_rev -
+ * part_id -
+ * pbuild -
+ * device_id -
+ * customer -
+ * rom_id -
+ * rev_ext -
+ * rev_branch -
+ * rev_int -
+ * patch -
+ * func -
+ *
+ * npacket_rx -
+ * npacket_tx -
+ * curr_state -
+ * radio_active -
+ * rx_fifo -
+ * tx_fifo -
+ * int_pending -
+ * int_status -
+ * ph_pending -
+ * ph_status -
+ * modem_pending -
+ * modem_status -
+ * chip_pending -
+ * chip_status -
+ * cmd_error -
+ * saw_rx -
  */
 struct libradio {
 	/*
 	 * Overall state and time.
 	 */
-	uchar_t		state;					/* LIBRADIO_STATE_{x} */
-	uchar_t		tens_of_minutes;		/* Time of day in 10 minute increments (255 = off) */
-	uint_t		ms_ticks;				/* Count of 10ms ticks */
-	uchar_t		slow_period;			/* Clock period to use when running slowly */
-	uchar_t		fast_period;			/* Clock period to use when running normally */
-	uchar_t		period;					/* No. of ms_ticks per interrupt (see slow/fast) */
-	uint_t		heart_beat;				/* Timer used for the LED song */
-	uint_t		date;					/* Current date (user-defined) */
-	uint_t		timeout;				/* How long to go from WARM to COLD */
-	uint_t		all_ticks;				/* No. of clock ticks since boot */
-	uint_t		main_ticks;				/* How long to wait in the main loop */
-	uchar_t		recv_ticks;				/* How long to wait in receive-mode */
-	uchar_t		catch_irq;				/* Should we listen for radio IRQs? */
+	uchar_t		state;
+	uchar_t		tens_of_minutes;
+	uint_t		ms_ticks;
+	uchar_t		slow_period;
+	uchar_t		fast_period;
+	uchar_t		period;
+	uint_t		heart_beat;
+	uint_t		date;
+	uint_t		timeout;
+	uint_t		all_ticks;
+	uint_t		main_ticks;
+	uint_t		tick_count;
+	uchar_t		catch_irq;
 	/*
 	 * Node and channel identification.
 	 */
-	uchar_t		my_channel;				/* My channel number. Zero is the sleepy channel */
-	uchar_t		curr_channel;			/* Current channel */
-	uchar_t		my_node_id;				/* My NodeID. Zero means "unset" */
-	uchar_t		cat1, cat2;				/* Two category bytes (see README) */
-	uchar_t		num1, num2;				/* Two instance bytes (see README) */
+	uchar_t		my_channel;
+	uchar_t		curr_channel;
+	uchar_t		my_node_id;
+	uchar_t		cat1, cat2;
+	uchar_t		num1, num2;
 	/*
 	 * Radio settings.
 	 */
