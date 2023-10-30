@@ -67,7 +67,7 @@ libradio_init(uchar_t c1, uchar_t c2, uchar_t n1, uchar_t n2)
 {
 	memset((void *)&radio, 0, sizeof(struct libradio));
 	libradio_set_state(LIBRADIO_STATE_STARTUP);
-	libradio_set_clock(1, 128);
+	libradio_set_clock(1, 16);
 	radio.tens_of_minutes = 0xff;
 	radio.main_ticks = 5;
 	radio.curr_state = SI4463_STATE_SLEEP;
