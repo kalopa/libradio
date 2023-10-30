@@ -77,7 +77,6 @@ main()
 	 * The EEPROM data however will be used for channel ownership information.
 	 */
 	libradio_init(CONTROL_C1, CONTROL_C2, CONTROL_N1, CONTROL_N2);
-	libradio_set_clock(1, 160);
 	tx_init();
 	/*
 	 * Begin the main loop - every clock tick, call the radio loop.
