@@ -128,6 +128,9 @@ uchar_t	libradio_recv(struct channel *, uchar_t);
 uchar_t	libradio_send(struct channel *, uchar_t);
 int		libradio_power_up();
 void	libradio_power_down();
+uint_t	libradio_get_ticks();
+uchar_t	libradio_get_tom();
+
 void	libradio_set_rx(uchar_t);
 int		libradio_request_device_status();
 void	libradio_get_property(uint_t, uchar_t);

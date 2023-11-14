@@ -59,7 +59,7 @@ libradio_rxloop()
 	 * First things first - wait for the clock timer to kick us into doing
 	 * something. The sleep() function will pause the CPU until the next IRQ.
 	 */
-	printf("\n>>RX.TOP S%d,I%d,RX%d\n", radio.state, irq_fired, radio.saw_rx);
+	printf(">>RxTopS%d,I%d,RX%d(%d)\n", radio.state, irq_fired, radio.saw_rx, radio.ms_ticks);
 	PORTC |= 01;
 	while (irq_fired == 0 && libradio_tick_wait() == 0)
 		_sleep();
