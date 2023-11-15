@@ -108,7 +108,6 @@ process_input()
 				/*
 				 * Too much data for this channel. Abort!
 				 */
-				curr_chp->state = LIBRADIO_CHSTATE_TRANSMIT;
 				response(1);
 				break;
 			}
@@ -171,7 +170,6 @@ process_input()
 	case STATE(IO_STATE_WAITCMD, ':'):
 	case STATE(IO_STATE_WAITCMD, '.'):
 		state = IO_STATE_WAITDATA;
-		curr_pp->cmd = value;
 		curr_pp->len = 0;
 		value = 0;
 		if (ch == '.') {

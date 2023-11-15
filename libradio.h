@@ -107,6 +107,8 @@ struct channel	{
 #define LIBRADIO_CHSTATE_EMPTY			2
 #define LIBRADIO_CHSTATE_ADDING			3
 #define LIBRADIO_CHSTATE_TRANSMIT		4
+#define LIBRADIO_CHSTATE_TXRESPOND		5
+#define LIBRADIO_CHSTATE_RXRESPONSE		6
 
 extern	volatile uchar_t	main_thread;
 

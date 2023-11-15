@@ -36,7 +36,10 @@
 # the binaries. Nothing much to see, here. Move along, please!
 #
 DIRS=	lib control monitor examples
-SRCS=	libradio.h lib/internal.h lib/*.[Sc] control/*.[hc] examples/main.c
+SRCS=	libradio.h lib/internal.h lib/*.[Sc] \
+	control/*.[hc] \
+	monitor/monitor.c \
+	examples/oiltank.c
 
 all:
 	@for d in $(DIRS); do $(MAKE) -C $$d all; done

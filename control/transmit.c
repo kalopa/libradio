@@ -97,9 +97,10 @@ tx_check_queues()
 			/*
 			 * Send a "tens of minutes" time packet.
 			 */
-			if (chp->state == LIBRADIO_CHSTATE_EMPTY)
+			if (chp->state == LIBRADIO_CHSTATE_EMPTY) {
 				chp->offset = 0;
-			chp->state = LIBRADIO_CHSTATE_TRANSMIT;
+				chp->state = LIBRADIO_CHSTATE_TRANSMIT;
+			}
 			chp->priority = 0xff;
 			pp = (struct packet *)&chp->payload[chp->offset];
 			pp->node = 0;
@@ -118,9 +119,9 @@ tx_check_queues()
 		 * transmission. If we can't find a packet to send, we're done.
 		 */
 		for (channo = 0, nchp = NULL, chp = channels;
-											channo < MAX_RADIO_CHANNELS;
-											channo++, chp++) {
-			if (chp->priority == 0 || chp->state != LIBRADIO_CHSTATE_TRANSMIT)
+								channo < MAX_RADIO_CHANNELS;
+								channo++, chp++) {
+			if (chp->priority == 0 || chp->state < LIBRADIO_CHSTATE_TRANSMIT)
 				continue;
 			if (nchp == NULL || chp->priority > nchp->priority)
 				nchp = chp;
@@ -137,16 +138,18 @@ tx_check_queues()
 	chp->payload[chp->offset++] = 0;
 	chp->payload[chp->offset++] = 0;
 	if (libradio_send(chp, channo) != 0) {
-		chp->state = LIBRADIO_CHSTATE_EMPTY;
+		if (chp->state == LIBRADIO_CHSTATE_TXRESPOND)
+			chp->state = LIBRADIO_CHSTATE_RXRESPONSE;
+		else
+			chp->state = LIBRADIO_CHSTATE_EMPTY;
 		chp->priority = 0;
 	}
 	/*
 	 * Now increment the priority of the remaining channels to prevent them
 	 * getting locked out by busy channels at a higher priority.
 	 */
-	for (channo = 0, chp = channels; channo < MAX_RADIO_CHANNELS;
-														channo++, chp++) {
-		if (chp->state == LIBRADIO_CHSTATE_TRANSMIT && chp->priority < 0xfc)
+	for (channo = 0, chp = channels; channo < MAX_RADIO_CHANNELS; channo++, chp++) {
+		if (chp->state >= LIBRADIO_CHSTATE_TRANSMIT && chp->priority < 0xfc)
 			chp->priority += 2;
 	}
 }

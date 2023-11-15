@@ -113,34 +113,34 @@
  * cat1, cat2 - Two category bytes (see README) 
  * num1,  num2 - Two instance bytes (see README)
  *
- * chip_rev -
- * part_id -
- * pbuild -
- * device_id -
- * customer -
- * rom_id -
- * rev_ext -
- * rev_branch -
- * rev_int -
- * patch -
- * func -
+ * chip_rev - Si4463 chip revision
+ * part_id - Si4463 part ID
+ * pbuild - Si4463  part build version
+ * device_id - Si4463 device Id
+ * customer - Si4463 customer version
+ * rom_id - Si4463 ROM ID
+ * rev_ext - Si4463 revision extension
+ * rev_branch - Si4463 revision branch
+ * rev_int - Si4463 revision integer
+ * patch - Si4463 patch-level 
+ * func - Si4463 func-level
  *
- * npacket_rx -
- * npacket_tx -
- * curr_state -
- * radio_active -
- * rx_fifo -
- * tx_fifo -
- * int_pending -
- * int_status -
- * ph_pending -
- * ph_status -
- * modem_pending -
- * modem_status -
- * chip_pending -
- * chip_status -
- * cmd_error -
- * saw_rx -
+ * npacket_rx - No. of good packets received
+ * npacket_tx - No. of packets transmitted
+ * curr_state - Current state
+ * radio_active - Radio active
+ * rx_fifo - RX fifo count
+ * tx_fifo - TX fifo count
+ * int_pending - interrupt-pending status
+ * int_status - interrupt status
+ * ph_pending - packet handler interrupt-pending status
+ * ph_status - packet handler interrupt status
+ * modem_pending - modem interrupt-pending status
+ * modem_status - modem interrupt status
+ * chip_pending - chip interrupt-pending status
+ * chip_status - chip interrupt status
+ * cmd_error - command error
+ * saw_rx - Saw an RX packet (boolean)
  */
 struct libradio {
 	/*

@@ -59,8 +59,7 @@ enqueue(struct channel *chp, struct packet *pp)
 		 * if this is the only transmission.
 		 */
 		response(mycommand(pp));
-		chp->state = (chp->offset == 0) ?
-						LIBRADIO_CHSTATE_EMPTY : LIBRADIO_CHSTATE_TRANSMIT;
+		chp->state = (chp->offset == 0) ? LIBRADIO_CHSTATE_EMPTY : LIBRADIO_CHSTATE_TRANSMIT;
 		return;
 	}
 	/*
@@ -78,7 +77,10 @@ enqueue(struct channel *chp, struct packet *pp)
 	 */
 	pp->len += PACKET_HEADER_SIZE;
 	chp->offset += pp->len;
-	chp->state = LIBRADIO_CHSTATE_TRANSMIT;
+	if (pp->cmd == RADIO_CMD_STATUS)
+		chp->state = LIBRADIO_CHSTATE_TXRESPOND;
+	else
+		chp->state = LIBRADIO_CHSTATE_TRANSMIT;
 	/*
 	 * Calculate the TX priority. This is channel-dependent with
 	 * channel 0 having the highest priority. Multiply this by 8
