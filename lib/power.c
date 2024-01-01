@@ -80,6 +80,7 @@ libradio_power_up()
 			return(-1);
 		}
 	}
+	printf("GET.\n");
 	libradio_get_chip_status();
 	libradio_get_part_info();
 	libradio_get_func_info();

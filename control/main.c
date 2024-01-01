@@ -83,19 +83,28 @@ main()
 	 */
 	libradio_set_state(LIBRADIO_STATE_WARM);
 	while (1) {
-		while (libradio_tick_wait() == 0) {
-			/*
-			 * Handle serial data from our upstream overlords.
-			 */
-			if (!sio_iqueue_empty())
-				process_input();
-			_sleep();
-		}
 		/*
 		 * Run down through the list of channels and see if anything needs
 		 * to be transmitted. This is based on the priority.
 		 */
+		wait_for_tick();
 		tx_check_queues();
+	}
+}
+
+/*
+ * Wait for a tick to happen.
+ */
+void
+wait_for_tick()
+{
+	while (libradio_tick_wait() == 0) {
+		/*
+		 * Handle serial data from our upstream overlords.
+		 */
+		if (!sio_iqueue_empty())
+			process_input();
+		_sleep();
 	}
 }
 

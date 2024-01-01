@@ -138,9 +138,26 @@ tx_check_queues()
 	chp->payload[chp->offset++] = 0;
 	chp->payload[chp->offset++] = 0;
 	if (libradio_send(chp, channo) != 0) {
-		if (chp->state == LIBRADIO_CHSTATE_TXRESPOND)
+		if (chp->state == LIBRADIO_CHSTATE_TXRESPOND) {
+			printf("TXResp!\n");
+			while (1) {
+				libradio_request_device_status();
+				printf("curr_state:%d\n", radio.curr_state);
+				wait_for_tick();
+			}
+			/* FIXME: Do some stuff here to set the radio up for receiving... */
+			/* Thoughts:
+			   Need to make sure the transmission has completed. Maybe we wait?
+			   We could enable TX interrupts and go that route. Waiting might be
+			   the best option, especially in the short term. So, wait until the
+			   transmitter reports it is done, flip it to RX mode, set the receive
+			   timer and enable RX ints. Maybe not in that order? After that, once
+			   the timer runs down, put the state into _EMPTY and continue on.
+			   While the timer is running, don't want to do anything in here so
+			   the main loop needs to stay out of the way.
+			 */
 			chp->state = LIBRADIO_CHSTATE_RXRESPONSE;
-		else
+		} else
 			chp->state = LIBRADIO_CHSTATE_EMPTY;
 		chp->priority = 0;
 	}

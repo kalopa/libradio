@@ -51,6 +51,7 @@
 void
 enqueue(struct channel *chp, struct packet *pp)
 {
+	printf("ENQ:S%d,N%d,C%d,M%d\n", radio.state, pp->node, pp->cmd, radio.my_node_id);
 	if (pp->node == radio.my_node_id ||
 				(pp->cmd == RADIO_CMD_ACTIVATE && radio.state < LIBRADIO_STATE_ACTIVE)) {
 		/*
@@ -68,7 +69,7 @@ enqueue(struct channel *chp, struct packet *pp)
 	 */
 	if (radio.state != LIBRADIO_STATE_ACTIVE) {
 		chp->state = LIBRADIO_CHSTATE_EMPTY;
-		response(2);
+		response(5);
 		return;
 	}
 	/*
@@ -77,6 +78,7 @@ enqueue(struct channel *chp, struct packet *pp)
 	 */
 	pp->len += PACKET_HEADER_SIZE;
 	chp->offset += pp->len;
+	printf("CMD:%d\n", pp->cmd);
 	if (pp->cmd == RADIO_CMD_STATUS)
 		chp->state = LIBRADIO_CHSTATE_TXRESPOND;
 	else

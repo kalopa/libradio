@@ -108,7 +108,7 @@ process_input()
 				/*
 				 * Too much data for this channel. Abort!
 				 */
-				response(1);
+				response(2);
 				break;
 			}
 		}
@@ -169,13 +169,14 @@ process_input()
 
 	case STATE(IO_STATE_WAITCMD, ':'):
 	case STATE(IO_STATE_WAITCMD, '.'):
-		state = IO_STATE_WAITDATA;
+		curr_pp->cmd = value;
 		curr_pp->len = 0;
 		value = 0;
 		if (ch == '.') {
 			enqueue(curr_chp, curr_pp);
 			state = IO_STATE_WAITNL;
-		}
+		} else
+			state = IO_STATE_WAITDATA;
 		break;
 
 	case STATE(IO_STATE_WAITDATA, ','):
@@ -185,7 +186,7 @@ process_input()
 			 * Too much data for this channel. Abort! Note that we reserve
 			 * two bytes to specify node:0,len:0 at the end.
 			 */
-			response(1);
+			response(3);
 			break;
 		}
 		curr_pp->data[curr_pp->len++] = value;
@@ -198,7 +199,7 @@ process_input()
 
 	default:
 		if (state != IO_STATE_WAITNL)
-			response(1);
+			response(4);
 		break;
 	}
 }

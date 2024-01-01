@@ -53,6 +53,7 @@ void	clock_init();
 void	serial_init();
 void	tx_init();
 void	tx_check_queues();
+void    wait_for_tick();
 void	process_input();
 uchar_t	mycommand(struct packet *);
 void	send_time(struct channel *);

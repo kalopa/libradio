@@ -71,7 +71,7 @@ serial_init()
 	 * 38.4kbaud (with a 16MHz crystal).
 	 */
 	UBRR0 = 25;
-	UCSR0B = (1<<RXCIE0)|(1<<UDRIE0)|(1<<RXEN0)|(1<<TXEN0);
+	UCSR0B = (1<<RXCIE0)|(1<<RXEN0)|(1<<TXEN0);
 	UCSR0C = (1<<UCSZ01)|(1<<UCSZ00);
 	//sio_set_direct_mode(1);
 	(void )fdevopen(sio_putc, sio_getc);

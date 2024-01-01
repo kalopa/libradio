@@ -2,7 +2,7 @@
 #
 require 'serialport'
 
-DEVICE = "/dev/ttyS0"
+DEVICE = "/dev/ttyUSB0"
 SPEED = 38400
 
 #

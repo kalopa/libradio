@@ -129,7 +129,6 @@ libradio_dump()
 {
 	printf(">> LibRadio Overall State/Time:-\n");
 	printf("State:\t%d\n", radio.state);
-#if 0
 	printf("Tens of Minutes:\t%d\n", radio.tens_of_minutes);
 	printf("Millisecond Ticks:\t%d\n", radio.ms_ticks);
 	printf("Slow Period:\t%d\n", radio.slow_period);
@@ -175,5 +174,4 @@ libradio_dump()
 	printf("Chip Status:\t%d\n", radio.chip_status);
 	printf("Command Error:\t%d\n", radio.cmd_error);
 	printf("Saw RX Packet:\t%d\n", radio.saw_rx);
-#endif
 }

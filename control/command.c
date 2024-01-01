@@ -85,14 +85,15 @@ mycommand(struct packet *pp)
 		 */
 		if (pp->len != 3)
 			break;
-		printf("Master Activate!\n");
+		printf("M-Actvt! ch:%d,node:%d\n", pp->data[0], pp->data[1]);
 		radio.my_channel = pp->data[0];
 		radio.my_node_id = pp->data[1];
 		if (libradio_power_up() == 0) {
+			printf("Going to ACTIVE state.\n");
 			libradio_set_state(LIBRADIO_STATE_ACTIVE);
 		} else {
 			printf("Radio power-up failed.\n");
-			return(3);
+			return(6);
 		}
 		break;
 
@@ -158,7 +159,7 @@ mycommand(struct packet *pp)
 		break;
 
 	default:
-		return(1);
+		return(7);
 	}
 	return(0);
 }

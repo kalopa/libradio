@@ -75,7 +75,7 @@ If, during a LISTEN state, radio traffic is heard, but no
 activation command is received for this device, then it will
 drop back to a WARM sleep.
 The WARM sleep state is similar to the COLD state except that it will
-re-awaken after fifteen minutes rather than an hour, and will listen
+re-awaken after a five minutes rather than an hour, and will listen
 for two minutes instead of one minute.
 
 The system is expected to monitor battery voltage, and in the event

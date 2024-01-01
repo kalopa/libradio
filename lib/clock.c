@@ -72,8 +72,8 @@ clocktick()
 	 * Update the main LED song, one note at a time. The whole thing should
 	 * take a consistent 1.6 seconds.
 	 */
-	if ((hbclock += radio.period) > 100) {
-		hbclock -= 100;
+	if ((hbclock += radio.period) > 10) {
+		hbclock -= 10;
 		_setled(ledf = (radio.heart_beat & 0x8000) ? 1 : 0);
 		radio.heart_beat = (radio.heart_beat << 1) | ledf;
 	}
@@ -144,10 +144,6 @@ libradio_tick_wait()
 	thread_ok = 0;
 	return(old_value);
 }
-
-/*
- * Wait for a thread run.
- */
 
 /*
  * Check to see if the timer has fired.

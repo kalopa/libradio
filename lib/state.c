@@ -68,11 +68,11 @@ libradio_set_state(uchar_t new_state)
 		/*
 		 * Time to reduce power and wait for a while. Also turn off the real
 		 * time clock - no point trying to track the time in this mode. Wait
-		 * for 15 or 60 minutes depending.
+		 * for 5 or 60 minutes depending.
 		 */
 		power_mode(0);
 		radio.tens_of_minutes = 0xff;
-		ticks = (new_state == LIBRADIO_STATE_WARM) ? 15*60*100L : 60*60*100L;
+		ticks = (new_state == LIBRADIO_STATE_WARM) ? 5*60*100L : 60*60*100L;
 		if ((ticks /= (long )radio.period) > 65535L)
 			ticks = 65535L;
 		libradio_set_delay((int )ticks);
@@ -102,6 +102,7 @@ libradio_set_state(uchar_t new_state)
 			radio.timeout = 6000 / radio.fast_period;
 		else
 			radio.timeout = (int )(12000L / (long )radio.fast_period);
+		libradio_set_delay(100);
 		break;
 
 	case LIBRADIO_STATE_ERROR:
@@ -121,4 +122,5 @@ libradio_set_state(uchar_t new_state)
 		radio.timeout = 6000;
 		break;
 	}
+	radio.state = new_state;
 }
