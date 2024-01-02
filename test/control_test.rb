@@ -2,8 +2,10 @@
 #
 require 'serialport'
 
-DEVICE = "/dev/ttyUSB0"
+DEVICE = "/dev/ttyS0"
 SPEED = 38400
+
+$timeout = nil
 
 #
 # Initialize the radio controller.
@@ -13,9 +15,41 @@ end
 #
 # Receiver thread.
 def receive_thread(sp)
+  bad_count = 0
   sp.each_line do |line|
     line = line.scrub('.').chomp
-    puts "#{Time.now.strftime('%T')}: #{line}"
+    if line =~ /^@-/
+      bad_count += 1
+      exit if bad_count > 10
+    else
+      bad_count = 0
+    end
+    puts "#{Time.now.strftime('%T')}: #{line} (#{bad_count})"
+    $timeout = Time.now + 60
+    if line =~ /^<A1:/
+      # <A1:27598:9:0,6,102,3,112,0,0,0,6 (0)
+      # chno:<A1, ts: 10206, cmd: 9, args: ["0", "6", "103", "3", "112", "0", "0", "0", "20"]
+      # <A1:27798:9:1,1,1,1,1,2,4 (0)
+      chno, ts, cmd, data = line.split /:/
+      chno = chno[1..-1]
+      ts = ts.to_i
+      cmd = cmd.to_i
+      data = data.gsub(/ .*/, '')
+      args = data.split /,/
+      args.map! {|a| a.to_i}
+      if cmd == 9
+        #
+        # Status response.
+        if args[0] == 0
+          bv = (args[3] << 8) + args[4]
+          rx = (args[5] << 8) + args[6]
+          tx = (args[7] << 8) + args[8]
+          puts ">> Dynamic status: Radio State: #{args[1]}. ToM: #{args[2]}, Batt#{bv}. RX #{rx}, TX #{tx}."
+        else
+          puts ">> Static status: ID: #{args[1]}/#{args[2]}/#{args[3]}/#{args[4]}. V#{args[5]}.#{args[6]}."
+        end
+      end
+    end
   end
   puts "RX Done."
 end
@@ -30,6 +64,7 @@ def transmit_thread(sp)
   lcount = 0
   loop do
     puts "Loop ##{lcount}..."
+    exit if lcount > 20 and $timeout and $timeout < Time.now
     case lcount
     when 1
       puts "Set time..."
@@ -53,19 +88,30 @@ def transmit_thread(sp)
     if lcount > 9
       case lcount & 07
       when 0
+        # Request dynamic status of master controller
         sp.puts ">S\r\n"
       when 1
+        # Request static status of master controller
         sp.puts ">T\r\n"
       when 2
-        client_activate(sp, [1, 3, 0x7f, 0x01, 0, 1])
+        # Activate device 34-5-35-1.
+        client_activate(sp, [1, 3, 34, 5, 0, 2])
       when 3
+        # Request dynamic status
         request_status(sp, 1, 3, 0)
       when 4
+        # Request static status
         request_status(sp, 1, 3, 1)
+      when 5
+        # Set direction (FORWARD)
+        send_command sp, chan: 1, node: 3, cmd: 17, data: [1].flatten
+      when 6
+        # Set speed
+        send_command sp, chan: 1, node: 3, cmd: 18, data: [127].flatten
       end
     end
     lcount += 1
-    sleep 5
+    sleep 2
   end
 end
 

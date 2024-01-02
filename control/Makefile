@@ -41,7 +41,7 @@ CSRCS=	main.c init.c command.c enqueue.c transmit.c input.c
 BIN=	radiocon
 FIRMWARE=radiocon.hex
 
-SERIAL_DEVICE=/dev/ttyUSB0:38400
+SERIAL_DEVICE?=/dev/ttyUSB0:38400
 
 include ../avr.mk
 
