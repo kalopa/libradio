@@ -100,7 +100,7 @@ clocktick()
 	 * Increment the seconds counter in case the main loop needs to do
 	 * periodic work (like check the battery).
 	 */
-	if ((timer_count += radio.period) >= 1000) {
+	if ((timer_count += radio.period) >= 100) {
 		timer_count = 0;
 		elapsed_second = 1;
 	}

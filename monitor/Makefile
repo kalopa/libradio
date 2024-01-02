@@ -41,7 +41,7 @@ ASRCS=
 CSRCS=	monitor.c
 BIN=	monitor
 
-SERIAL_DEVICE=/dev/ttyUSB1:38400
+SERIAL_DEVICE=/dev/cu.usbserial:38400
 
 include ../avr.mk
 

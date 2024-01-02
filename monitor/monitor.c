@@ -45,6 +45,18 @@
 
 struct channel	recvchan;
 
+char *cmd_names[RADIO_CMD_ADDITIONAL_BASE] = {
+	"NoOp", "Firmware", "StatReq", "Activate", "Deactivate",
+	"SetTime", "SetDate", "RdEE", "WrEE", "StatResp", "EEResp",
+	"Rsvd1", "Rsvd2", "Rsvd3", "Rsvd4", "Rsvd5"
+};
+
+/*
+ * Prototypes
+ */
+void		hexout(int);
+char		hexdigit(char);
+
 /*
  *
  */
@@ -116,14 +128,21 @@ main()
 			radio.tens_of_minutes = 0;
 		if (irq_fired) {
 			libradio_get_int_status();
+			libradio_get_modem_status();
 			libradio_irq_enable(1);
 		}
 		if (libradio_recv(chp, radio.my_channel) == 0)
 			continue;
-		printf("RX (ch%d,tk:%u,len:%d)\n", radio.my_channel, radio.ms_ticks, chp->offset);
-		printf("No%dLn%dCm%d:", chp->payload[0], chp->payload[1], chp->payload[2]);
+		printf("RSSI%d,%d,%d,%d: ", radio.current_rssi, radio.latch_rssi, radio.ant1_rssi, radio.ant2_rssi);
+		printf("RX ch%d,tk:%u,len:%d: ", radio.my_channel, radio.ms_ticks, chp->offset);
+		printf("Node %d, Len %d ", chp->payload[0], chp->payload[1]);
+		if (chp->payload[2] < RADIO_CMD_ADDITIONAL_BASE)
+			printf("%s ", cmd_names[chp->payload[2]]);
+		else
+			printf("USER%d ", chp->payload[2] - RADIO_CMD_ADDITIONAL_BASE);
+		printf("\nData:");
 		for (i = 3; i < chp->offset; i++)
-			printf(" 0x%x", chp->payload[i] & 0xff);
+			hexout(chp->payload[i] & 0xff);
 		putchar('\n');
 	}
 }
@@ -132,7 +151,7 @@ main()
  * In this case, we never take our foot off the gas.
  */
 void
-power_mode(uchar_t hi_flag)
+libradio_power_mode(uchar_t hi_flag)
 {
 	return;
 }
@@ -152,4 +171,23 @@ int
 fetch_status(uchar_t status_type, uchar_t status[], int maxlen)
 {
 	return(0);
+}
+
+/*
+ * Output a hex number and a space
+ */
+void
+hexout(int value)
+{
+	putchar(' ');
+	putchar(hexdigit((value >> 8) & 15));
+	putchar(hexdigit(value & 15));
+}
+
+char
+hexdigit(char ch)
+{
+	if (ch > 9)
+		ch += 7;
+	return(ch + '0');
 }

@@ -70,7 +70,7 @@ libradio_set_state(uchar_t new_state)
 		 * time clock - no point trying to track the time in this mode. Wait
 		 * for 5 or 60 minutes depending.
 		 */
-		power_mode(0);
+		libradio_power_mode(0);
 		radio.tens_of_minutes = 0xff;
 		ticks = (new_state == LIBRADIO_STATE_WARM) ? 5*60*100L : 60*60*100L;
 		if ((ticks /= (long )radio.period) > 65535L)
@@ -89,7 +89,7 @@ libradio_set_state(uchar_t new_state)
 			 * that we were already in low power mode, or we'll glitch the
 			 * real-time clock and the time of day.
 			 */
-			power_mode(1);
+			libradio_power_mode(1);
 		}
 		/*
 		 * Switch to channel 0, clear the packet flag, and set a timeout
@@ -118,7 +118,7 @@ libradio_set_state(uchar_t new_state)
 		 * timeout for 60,000 passes through the loop (whatever that is
 		 * in seconds).
 		 */
-		power_mode(1);
+		libradio_power_mode(1);
 		radio.timeout = 6000;
 		break;
 	}

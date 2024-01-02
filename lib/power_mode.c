@@ -50,7 +50,7 @@
  * consumption.
  */
 void
-power_mode(uchar_t hi_flag)
+libradio_power_mode(uchar_t hi_flag)
 {
 	cli();
 	if (hi_flag) {
