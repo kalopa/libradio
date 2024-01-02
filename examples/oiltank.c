@@ -39,13 +39,6 @@
  *
  * The operate() function is a call-back from the libradio code whenever
  * we get a request to do something. In this case, measure the oil!
- *
- * The power_mode() function is used to reduce power. Generally the
- * simplest way to reduce power is to slow down the clock as much as
- * possible. As the system will execute a halt instruction when not busy,
- * reducing interrupt overhead reduces power. If there are other things
- * to do, like for example, disable a stepper motor driver, then that
- * would be good too.
  */
 #include <stdio.h>
 #include <avr/io.h>

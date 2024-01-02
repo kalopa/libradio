@@ -176,4 +176,4 @@ void	libradio_dump();
  */
 void	operate(struct packet *);
 int		fetch_status(uchar_t, uchar_t [], int);
-void	power_mode(uchar_t);
+void	libradio_power_mode(uchar_t);

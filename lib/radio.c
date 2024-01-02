@@ -123,6 +123,12 @@ libradio_get_func_info()
 void
 libradio_get_packet_info()
 {
+	int length;
+
+	spi_data[0] = SI4463_PACKET_INFO;
+	if (spi_send(1, 2) == 0)
+		return;
+	length = (spi_data[0] << 8) | spi_data[1];
 }
 
 /*
@@ -166,6 +172,10 @@ libradio_get_modem_status()
 		return;
 	radio.modem_pending = spi_data[0];
 	radio.modem_status = spi_data[1];
+	radio.current_rssi = spi_data[2];
+	radio.latch_rssi = spi_data[3];
+	radio.ant1_rssi = spi_data[4];
+	radio.ant2_rssi = spi_data[5];
 }
 
 /*

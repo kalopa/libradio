@@ -200,6 +200,10 @@ struct libradio {
 	uchar_t		chip_status;
 	uchar_t		cmd_error;
 	uchar_t		saw_rx;
+	uchar_t		current_rssi;
+	uchar_t		latch_rssi;
+	uchar_t		ant1_rssi;
+	uchar_t		ant2_rssi;
 };
 
 extern uchar_t			spi_data[MAX_SPI_BLOCK];
