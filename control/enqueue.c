@@ -78,10 +78,10 @@ enqueue(struct channel *chp, struct packet *pp)
 	 */
 	pp->len += PACKET_HEADER_SIZE;
 	chp->offset += pp->len;
-	printf("CMD:%d\n", pp->cmd);
-	if (pp->cmd == RADIO_CMD_STATUS)
-		chp->state = LIBRADIO_CHSTATE_TXRESPOND;
-	else
+	printf("CMD:%d %d\n", pp->cmd, chp->offset);
+	//if (pp->cmd == RADIO_CMD_STATUS)
+	//	chp->state = LIBRADIO_CHSTATE_TXRESPOND;
+	//else
 		chp->state = LIBRADIO_CHSTATE_TRANSMIT;
 	/*
 	 * Calculate the TX priority. This is channel-dependent with

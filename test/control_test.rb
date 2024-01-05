@@ -77,13 +77,13 @@ def transmit_thread(sp)
       set_channel(sp, 0, 2)
     when 5
       puts "Activate channel 1..."
-      set_channel(sp, 1, 2)
+      #set_channel(sp, 1, 2)
     when 6
       puts "Activate channel 2..."
-      set_channel(sp, 2, 2)
+      #set_channel(sp, 2, 2)
     when 7
       puts "Activate channel 3..."
-      set_channel(sp, 3, 1)
+      #set_channel(sp, 3, 1)
     end
     if lcount > 9
       case lcount & 07
@@ -95,23 +95,23 @@ def transmit_thread(sp)
         sp.puts ">T\r\n"
       when 2
         # Activate device 34-5-35-1.
-        client_activate(sp, [1, 3, 34, 5, 0, 2])
+        client_activate(sp, [1, 3, 34, 5, 35, 2])
       when 3
         # Request dynamic status
-        request_status(sp, 1, 3, 0)
+        #request_status(sp, 1, 3, 0)
       when 4
         # Request static status
-        request_status(sp, 1, 3, 1)
+        #request_status(sp, 1, 3, 1)
       when 5
         # Set direction (FORWARD)
         send_command sp, chan: 1, node: 3, cmd: 17, data: [1].flatten
       when 6
-        # Set speed
+        # Set loco speed
         send_command sp, chan: 1, node: 3, cmd: 18, data: [127].flatten
       end
     end
     lcount += 1
-    sleep 2
+    sleep 1
   end
 end
 

@@ -91,6 +91,8 @@ mycommand(struct packet *pp)
 		if (libradio_power_up() == 0) {
 			printf("Going to ACTIVE state.\n");
 			libradio_set_state(LIBRADIO_STATE_ACTIVE);
+			libradio_set_delay(1);
+			libradio_power_mode(1);
 		} else {
 			printf("Radio power-up failed.\n");
 			return(6);

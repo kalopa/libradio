@@ -141,9 +141,12 @@ tx_check_queues()
 		if (chp->state == LIBRADIO_CHSTATE_TXRESPOND) {
 			printf("TXResp!\n");
 			while (1) {
+				int i;
+
 				libradio_request_device_status();
 				printf("curr_state:%d\n", radio.curr_state);
-				wait_for_tick();
+				for (i = 0; i < 200; i++)
+					wait_for_tick();
 			}
 			/* FIXME: Do some stuff here to set the radio up for receiving... */
 			/* Thoughts:
