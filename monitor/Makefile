@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023, Kalopa Robotics Limited.  All rights reserved.
+# Copyright (c) 2023-24, Kalopa Robotics Limited.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -41,7 +41,7 @@ ASRCS=
 CSRCS=	monitor.c
 BIN=	monitor
 
-SERIAL_DEVICE=/dev/cu.usbserial:38400
+SERIAL_DEVICE?=/dev/ttyUSB2:38400
 
 include ../avr.mk
 

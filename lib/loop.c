@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2019-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,14 +43,9 @@
 #include "internal.h"
 
 /*
- * Track whenever the radio interrupts us.
- */
-uchar_t		irq_fired = 0;
-
-/*
- * This is called repeatedly from the main loop. The task here is based on
- * the current state. Note we will halt the processor if there is nothing
- * to do at this point.
+ * This is called repeatedly from the main loop on the client side. The
+ * task here is based on the current state. It combines a libradio_wait()
+ * call with a small state machine to handle transitions.
  */
 void
 libradio_rxloop()
@@ -59,17 +54,12 @@ libradio_rxloop()
 	 * First things first - wait for the clock timer to kick us into doing
 	 * something. The sleep() function will pause the CPU until the next IRQ.
 	 */
-	printf(">>RxTopS%d,I%d,RX%d(%d)\n", radio.state, irq_fired, radio.saw_rx, radio.tick_count);
-	PORTC |= 01;
-	while (irq_fired == 0 && libradio_tick_wait() == 0)
-		_sleep();
-	if (irq_fired) {
+	if (libradio_wait()) {
 		libradio_set_delay(5);
 		libradio_handle_packet();
 		libradio_get_int_status();
 		libradio_irq_enable(1);
 	}
-	PORTC &= ~01;
 	/*
 	 * Depending on what state we're in, do something useful. For a lot of
 	 * these states, not much happens and all we do is move to the next
@@ -120,21 +110,4 @@ libradio_rxloop()
 		}
 		break;
 	}
-}
-
-/*
- * Enable radio IRQs. These appear on PD2 (INT0) and simply disable any
- * further interrupts and set irq_fired, which is used by the wait-timer.
- * We use catch_irq to track the fact we're using radio IRQs. This is so
- * we remember to re-enable them, later on (see libradio_recv()).
- */
-void
-libradio_irq_enable(uchar_t flag)
-{
-	irq_fired = 0;
-	EICRA = 02;
-	if ((radio.catch_irq = flag) == 0)
-		EIMSK = 0;
-	else
-		EIMSK = 01;
 }

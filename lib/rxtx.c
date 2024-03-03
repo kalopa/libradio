@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,41 +46,68 @@
 #include "internal.h"
 
 /*
- * Receive data from the radio receiver. Note that if it is still powering
- * up then we'll need to wait a bit. Likewise, if the radio is asleep, we
- * will need to bring it back online.
+ * Start up the radio in RX mode. If the radio isn't already active,
+ * power it up. Set the radio to receive on our chosen (radio.my_channel)
+ * channel, and enable RX interrupts.
+ */
+uchar_t
+libradio_recv_start()
+{
+	if (!radio.radio_active && libradio_power_up() < 0)
+		return(0);
+	radio.catch_irq = 1;
+	libradio_set_rx(radio.my_channel);
+	return(1);
+}
+
+/*
+ * Receive packet data from the radio receiver. Do this by querying the
+ * FIFO status, and if there's at least one packet in the FIFO, pull
+ * it out. If the checksum is bad or the retrieval fails, then flush
+ * the RX FIFO. If we're using RX interrupts, re-enable them. Finally,
+ * if we're no longer in RX mode, then re-enable it.
  */
 uchar_t
 libradio_recv(struct channel *chp, uchar_t channo)
 {
 	uchar_t ret = 0;
 
-	chp->offset = 0;
-	if (!radio.radio_active && libradio_power_up() < 0)
-		return(0);
 	/*
 	 * First up, check the RX fifo to see if we have a packet.
 	 */
-	libradio_get_fifo_info(0);
-	if (radio.rx_fifo >= SI4463_PACKET_LEN) {
+	if (libradio_check_rx()) {
 		/*
 		 * There's at least a packet. Go get it!
 		 */
-		PORTC |= 02;
-		spi_rxpacket(chp);
-		PORTC &= ~02;
-		libradio_get_fifo_info(03);
-		radio.npacket_rx++;
-		radio.saw_rx = 1;
+		if ((ret = spi_rxpacket(chp)) == 0) {
+			/*
+			 * Got a defective packet - clear the RX FIFO
+			 * in case there's more. This is a particularly
+			 * awkward thing to do because the FIFO may be
+			 * in the throes of receiving the next packet. In
+			 * which case, we'll end up with a partial packet
+			 * in the FIFO and we'll never get it out. Ideally
+			 * here some sort of "I haven't received data
+			 * in X seconds, so flush any crud out of the
+			 * FIFO" might not be a bad way to go. Or if
+			 * the FIFO has had less than a packet-load for
+			 * N milliseconds, flush it.
+			 */
+			libradio_get_fifo_info(02);
+		} else {
+			radio.npacket_rx++;
+			radio.saw_rx = 1;
+		}
 		/*
 		 * If we caught an IRQ notification, re-enable interrupts now that
 		 * we've pulled the packet.
 		 */
 		if (radio.catch_irq)
 			libradio_irq_enable(1);
-		ret = 1;
 	}
-	libradio_set_rx(channo);
+	if (libradio_request_device_status() != SI4463_STATE_RX ||
+					radio.curr_channel != channo)
+		libradio_set_rx(channo);
 	return(ret);
 }
 
@@ -90,10 +117,8 @@ libradio_recv(struct channel *chp, uchar_t channo)
 void
 libradio_set_rx(uchar_t channo)
 {
-	if (libradio_request_device_status() == SI4463_STATE_RX &&
-					radio.curr_channel == channo)
-		return;
-	printf("Tune Ch%d\n", channo);
+	int i;
+
 	spi_data[0] = SI4463_START_RX;
 	spi_data[1] = channo;
 	spi_data[2] = 0;		/* CONDITION: Start immediately */
@@ -102,7 +127,8 @@ libradio_set_rx(uchar_t channo)
 	spi_data[5] = SI4463_STATE_NOCHANGE;
 	spi_data[6] = SI4463_STATE_READY;
 	spi_data[7] = SI4463_STATE_READY;
-	spi_send(8, 0);
+	if ((i = spi_send(8, 0)) != SPI_SEND_OK)
+		spi_error(i);
 	radio.curr_channel = channo;
 }
 
@@ -110,26 +136,73 @@ libradio_set_rx(uchar_t channo)
  * Transmit data via the radio transmitter. Note that if it is still powering
  * up then we'll need to wait a bit. Likewise, if the radio is asleep, we
  * will need to bring it back online. Only send the packet if we are in a
- * READY state and the FIFO is empty.
+ * READY state and the FIFO has space.
  */
 uchar_t
 libradio_send(struct channel *chp, uchar_t channo)
 {
+	int i;
+
+	/*
+	 * Power up the radio, if necessary.
+	 */
 	if (!radio.radio_active && libradio_power_up() < 0)
 		return(0);
+	/*
+	 * This seems odd, checking that we're in a READY state but it's
+	 * to avoid the situation where we're currently transmitting. We
+	 * could be in an RX state if we're waiting for a response packet
+	 * from the client.
+	 */
 	libradio_request_device_status();
 	if (radio.curr_state != SI4463_STATE_READY && radio.curr_state != SI4463_STATE_RX)
 		return(0);
-	libradio_get_fifo_info(0);
-	if (radio.tx_fifo < SI4463_PACKET_LEN)
+	/*
+	 * Check we have sufficient space in the transmit FIFO for
+	 * the packet.
+	 */
+	if (libradio_check_tx() == 0)
 		return(0);
-	spi_txpacket(chp);
+	/*
+	 * Finally! We're clear for launch! Transmit the packet contents
+	 * to the TX FIFO and spin up a TRANSMIT request. Note that if
+	 * the packet type indicates a response is required, then switch
+	 * to RX mode afterwards. Otherwise, drop back to READY.
+	 */
+	if (spi_txpacket(chp) == 0)
+		return(0);
 	spi_data[0] = SI4463_START_TX;
 	spi_data[1] = channo;
-	spi_data[2] = (SI4463_STATE_READY << 4);
+	if (chp->state > LIBRADIO_CHSTATE_TRANSMIT)
+		i = SI4463_STATE_RX;
+	else
+		i = SI4463_STATE_READY;
+	spi_data[2] = (i << 4);
 	spi_data[3] = 0;
 	spi_data[4] = SI4463_PACKET_LEN;
-	spi_send(5, 0);
+	i = spi_send(5, 0);
+	if (i != SPI_SEND_OK)
+		return(spi_error(i));
 	radio.npacket_tx++;
 	return(1);
+}
+
+/*
+ * Check if we have received at least one packet.
+ */
+uchar_t
+libradio_check_rx()
+{
+	libradio_request_device_status();
+	return(radio.rx_fifo >= SI4463_PACKET_LEN);
+}
+
+/*
+ * Check if we have received at least one packet.
+ */
+uchar_t
+libradio_check_tx()
+{
+	libradio_request_device_status();
+	return(radio.tx_fifo >= SI4463_PACKET_LEN);
 }

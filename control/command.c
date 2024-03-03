@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -95,7 +95,7 @@ mycommand(struct packet *pp)
 			libradio_power_mode(1);
 		} else {
 			printf("Radio power-up failed.\n");
-			return(6);
+			return(RADIO_CTLERR_POWER_FAIL);
 		}
 		break;
 
@@ -161,7 +161,7 @@ mycommand(struct packet *pp)
 		break;
 
 	default:
-		return(7);
+		return(RADIO_CTLERR_BAD_CMD);
 	}
 	return(0);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,8 +34,10 @@
  * channel structure definitions. It also includes prototypes for the
  * remaining functions.
  */
-#define MAX_FIFO_SIZE		46
+#define MAX_FIFO_SIZE		48
 #define MAX_PACKET_SIZE		16
+#define PACKET_HEADER_LEN	6
+#define MAX_PAYLOAD_SIZE	(MAX_PACKET_SIZE - PACKET_HEADER_LEN)
 
 /*
  * State machine used to manager radio operations. The states are
@@ -83,8 +85,21 @@
 #define RADIO_CMD_USER14		(RADIO_CMD_ADDITIONAL_BASE + 14)
 #define RADIO_CMD_USER15		(RADIO_CMD_ADDITIONAL_BASE + 15)
 
-#define RADIO_STATUS_DYNAMIC		0
-#define RADIO_STATUS_STATIC			1
+#define RADIO_STATUS_STATIC			0
+#define RADIO_STATUS_DYNAMIC		1
+#define RADIO_STATUS_USER0			2
+#define RADIO_STATUS_USER1			3
+#define RADIO_STATUS_USER2			4
+#define RADIO_STATUS_USER3			5
+
+#define RADIO_CTLERR_INVALID_CHANNEL	1
+#define RADIO_CTLERR_BUSY				2
+#define RADIO_CTLERR_TOO_MUCH_DATA		3
+#define RADIO_CTLERR_TOO_BIG			4
+#define RADIO_CTLERR_NEWLINE			5
+#define RADIO_CTLERR_NOT_ACTIVE			6
+#define RADIO_CTLERR_POWER_FAIL			7
+#define RADIO_CTLERR_BAD_CMD			8
 
 /*
  * Packet to be transmitted. Multiple packets are folded up into one
@@ -92,25 +107,30 @@
  * that the time stamp is encoded in front of the packet header and
  * not part of this struct. On receive, the time stamp is stripped
  * off first.
+ *
+ * We allow for a maximum of 10 bytes of actual payload data. This is
+ * because the maximum packet size is 16 bytes, there are three "magic"
+ * bytes sent during every transmission (myticks & cksum), and there
+ * are three header bytes in the packet.
  */
+typedef unsigned short ushort;
 struct packet	{
+	ushort	ticks;		/* Time stamp for the packet */
 	uchar_t		node;		/* ID for receiver (0 is a broadcast) */
-	uchar_t		len;		/* Length of the data payload */
 	uchar_t		cmd;		/* Command for the receiver */
-	uchar_t		data[1];	/* Zero or more bytes of command data */
+	uchar_t		len;		/* Length of the data payload */
+	uchar_t		csum;		/* Checksum for the overall packet */
+	uchar_t		data[MAX_PAYLOAD_SIZE];
 };
-
-#define PACKET_HEADER_SIZE		4
 
 /*
  * Normal receivers just have a single channel entry, but the transmitter can
  * have multiple. One for every transmitting frequency in use.
  */
 struct channel	{
-	uchar_t		offset;
 	uchar_t		state;
 	uchar_t		priority;
-	uchar_t 	payload[MAX_FIFO_SIZE];
+	struct packet	packet;
 };
 
 /*
@@ -125,7 +145,10 @@ struct channel	{
 #define LIBRADIO_CHSTATE_ADDING			3
 #define LIBRADIO_CHSTATE_TRANSMIT		4
 #define LIBRADIO_CHSTATE_TXRESPOND		5
-#define LIBRADIO_CHSTATE_RXRESPONSE		6
+#define LIBRADIO_CHSTATE_RXRESPONSE1	6
+#define LIBRADIO_CHSTATE_RXRESPONSE2	7
+#define LIBRADIO_CHSTATE_RXRESPONSE3	8
+#define LIBRADIO_CHSTATE_RXRESPONSE4	9
 
 extern	volatile uchar_t	main_thread;
 
@@ -135,13 +158,17 @@ extern	volatile uchar_t	main_thread;
 void	libradio_init(uchar_t, uchar_t, uchar_t, uchar_t);
 void	libradio_irq_enable(uchar_t);
 uchar_t	libradio_get_state();
+uchar_t	libradio_get_my_channel();
 void	libradio_set_state(uchar_t);
 void	libradio_set_clock(uchar_t, uchar_t);
+uint_t	libradio_get_delay();
 void	libradio_set_delay(uint_t);
 int		libradio_tick_wait();
 int		libradio_elapsed_second();
+uchar_t	libradio_recv_start();
 void	libradio_rxloop();
 void	libradio_command(struct packet *);
+uchar_t	libradio_wait();
 
 uchar_t	libradio_recv(struct channel *, uchar_t);
 uchar_t	libradio_send(struct channel *, uchar_t);
@@ -151,23 +178,25 @@ uint_t	libradio_get_ticks();
 uchar_t	libradio_get_tom();
 
 void	libradio_set_rx(uchar_t);
+uchar_t	libradio_check_rx();
+uchar_t	libradio_check_tx();
 int		libradio_request_device_status();
 void	libradio_get_property(uint_t, uchar_t);
 void	libradio_set_property();
 void	libradio_get_part_info();
 void	libradio_get_func_info();
-void	libradio_get_packet_info();
+int		libradio_get_packet_info();
 void	libradio_ircal();
 void	libradio_protocol_cfg();
 void	libradio_get_ph_status();
 void	libradio_get_modem_status();
 void	libradio_get_chip_status();
 void	libradio_change_radio_state(uchar_t);
-void	libradio_get_fifo_info(uchar_t);
+uchar_t	libradio_get_fifo_info(uchar_t);
 void	libradio_get_int_status();
 void	libradio_handle_packet();
+uchar_t	libradio_irq_fired();
 void	libradio_debug();
-void	libradio_dump();
 
 /*
  * Callback functions. operate() is called when a packet is received which is

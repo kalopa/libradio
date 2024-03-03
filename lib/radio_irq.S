@@ -1,5 +1,5 @@
 ;
-; Copyright (c) 2019-23, Kalopa Robotics Limited.  All rights
+; Copyright (c) 2019-24, Kalopa Robotics Limited.  All rights
 ; reserved.
 ;
 ; Redistribution and use in source and binary forms, with or without
@@ -48,9 +48,9 @@ radio_irq:
 ;
 	ldi		r24,1
 	out		_SFR_IO_ADDR(EIFR),r24		; Clear the interrupt
-	lds		r24,irq_fired
+	lds		r24,_irq_fired
 	inc		r24
-	sts		irq_fired,r24
+	sts		_irq_fired,r24
 ;	ldi		r24,0
 ;	out		_SFR_IO_ADDR(EIMSK),r24		; Disable it too (for now)
 ;

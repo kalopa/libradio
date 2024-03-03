@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2019-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,36 +29,63 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * This is the main include file for the radio controller.
+ * The main client application just calls libradio_rxloop() in a while loop
+ * and this does the bulk of the radio communications work. It manages the
+ * state machine for the radio, and attempts to read (and process) any
+ * received packets.
  */
-#define CONTROL_C1		1
-#define CONTROL_C2		1
-#define CONTROL_N1		1
-#define CONTROL_N2		1
+#include <stdio.h>
+#include <avr/io.h>
 
-#define FW_VERSION_H	2
-#define FW_VERSION_L	4
+#include <libavr.h>
 
-#define BATTERY_LOW		658
-#define BATTERY_OK		800
-
-#define MAX_RADIO_CHANNELS	6
-
-extern struct channel		channels[MAX_RADIO_CHANNELS];
-extern struct channel		*resp_chp;
+#include "libradio.h"
+#include "internal.h"
 
 /*
- * Prototypes.
+ * Track whenever the radio interrupts us.
  */
-void	clock_init();
-void	serial_init();
-void	tx_init();
-void	tx_check_queues();
-void	process_input();
-uchar_t	mycommand(struct packet *);
-void	send_time(struct channel *);
-void	enqueue(struct channel *);
-void	txresponse(struct channel *);
-void	set_channel(uchar_t, uchar_t);
-void	local_status(uchar_t);
-void	reply(uchar_t);
+uchar_t		_irq_fired = 0;
+
+/*
+ * Wait for the timer to tick, an interrupt from the radio, or some serial
+ * I/O. The intent here is to slow down the processor and to reduce the
+ * amount of power consumed. We put the processor to sleep, while we wait.
+ */
+uchar_t
+libradio_wait()
+{
+	while (!_irq_fired && !libradio_tick_wait() && sio_iqueue_empty()) {
+		_watchdog();
+		_sleep();
+	}
+	return(_irq_fired);
+}
+
+/*
+ * An IRQ from the radio hits PD2 (INT0).  The falling edge causes
+ * an interrupt. This function enables or disables radio interrupts.
+ * The IRQ simply disables any further interrupts and sets _irq_fired,
+ * which is used by the wait-timer.  We use catch_irq to track the fact
+ * we're using radio IRQs. This is so we remember to re-enable them,
+ * later on (see libradio_recv()).
+ */
+void
+libradio_irq_enable(uchar_t flag)
+{
+	_irq_fired = 0;
+	EICRA = 02;
+	if ((radio.catch_irq = flag) == 0)
+		EIMSK = 0;
+	else
+		EIMSK = 01;
+}
+
+/*
+ * Return the status of the _irq_fired bit
+ */
+uchar_t
+libradio_irq_fired()
+{
+	return(_irq_fired);
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -71,16 +71,16 @@ libradio_power_up()
 	addr = 0;
 	if (radio.radio_active)
 		return(0);
-	printf("Power up the radio.\n");
+	printf("PowerUp!\n");
 	while ((len = pgm_read_byte(&radio_config[addr++])) != 0) {
 		for (i = 0; i < len; i++)
 			spi_data[i] = pgm_read_byte(&radio_config[addr++]);
-		if (spi_send(len, 0) == 0) {
+		if ((i = spi_send(len, 0)) != SPI_SEND_OK) {
+			spi_error(i);
 			libradio_set_state(LIBRADIO_STATE_ERROR);
 			return(-1);
 		}
 	}
-	printf("GET.\n");
 	libradio_get_chip_status();
 	libradio_get_part_info();
 	libradio_get_func_info();
@@ -88,13 +88,16 @@ libradio_power_up()
 	libradio_ircal();
 	libradio_request_device_status();
 	libradio_get_fifo_info(03);
-	printf("Radio is now Active.\n");
+	printf("Radio Active\n");
 	radio.radio_active = 1;
 	return(0);
 }
 
 /*
- * Power-down the radio.
+ * Power-down the radio. Right now, this does nothing. It would be great
+ * if there was something useful we could do, here. Sometimes the radio
+ * ends up in a weird state and only power-cycling the entire system
+ * can fix it.
  */
 void
 libradio_power_down()

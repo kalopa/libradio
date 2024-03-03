@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -67,6 +67,8 @@ main()
 	clock_init();
 	serial_init();
 	sei();
+	printf("MCUSR%x\n", MCUSR);
+	MCUSR = 0;
 	printf("\nMain radio control system v%d.%d.\n",
 					FW_VERSION_H, FW_VERSION_L);
 	local_status(RADIO_STATUS_DYNAMIC);
@@ -84,27 +86,40 @@ main()
 	libradio_set_state(LIBRADIO_STATE_WARM);
 	while (1) {
 		/*
-		 * Run down through the list of channels and see if anything needs
-		 * to be transmitted. This is based on the priority.
+		 * Wait for something to happen. Check if we're waiting for a
+		 * response. Then look to see if we have any data.
+		 * :FIXME: Really we should be using the RX IRQ to tell us
+		 * there's a packet.
 		 */
-		wait_for_tick();
-		tx_check_queues();
-	}
-}
-
-/*
- * Wait for a tick to happen.
- */
-void
-wait_for_tick()
-{
-	while (libradio_tick_wait() == 0) {
+		libradio_wait();
+		if (resp_chp != NULL) {
+			if (libradio_check_rx()) {
+				txresponse(resp_chp);
+				resp_chp->state = LIBRADIO_CHSTATE_EMPTY;
+				resp_chp = NULL;
+			} else {
+				/*
+				 * Only allow a few passes through here while waiting for a response.
+				 * After that, just give up.
+				 */
+				if (resp_chp->state == LIBRADIO_CHSTATE_RXRESPONSE4) {
+					printf("Response timeout!\n");
+					resp_chp->state = LIBRADIO_CHSTATE_EMPTY;
+					resp_chp = NULL;
+				} else
+					resp_chp->state++;
+			}
+		}
 		/*
 		 * Handle serial data from our upstream overlords.
 		 */
 		if (!sio_iqueue_empty())
 			process_input();
-		_sleep();
+		/*
+		 * Check whether we need to send anything.
+		 */
+		if (resp_chp == NULL)
+			tx_check_queues();
 	}
 }
 

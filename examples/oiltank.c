@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -116,6 +116,7 @@ main()
 	printf("IDENT %d/%d/%d/%d\n", OILTANK_CAT1, OILTANK_CAT2, mynum1, mynum2);
 	libradio_init(OILTANK_CAT1, OILTANK_CAT2, mynum1, mynum2);
 	libradio_set_clock(10, 160);
+	libradio_recv_start();
 	libradio_irq_enable(1);
 	/*
 	 * Begin the main loop - every clock tick, call the radio loop.
@@ -161,15 +162,10 @@ fetch_status(uchar_t status_type, uchar_t status[], int maxlen)
 		return(0);
 	status[0] = status_type;
 	switch (status_type) {
-	case RADIO_STATUS_DYNAMIC:
-		status[1] = libradio_get_state();
-		status[2] = (battery_voltage >> 8) & 0xff;
-		status[3] = (battery_voltage & 0xff);
-		status[4] = (oil_level >> 8) & 0xff;
-		status[5] = (oil_level & 0xff);
-		return(6);
-
 	case RADIO_STATUS_STATIC:
+		/*
+		 * Status which doesn't really change.
+		 */
 		status[1] = OILTANK_CAT1;
 		status[2] = OILTANK_CAT2;
 		status[3] = mynum1;
@@ -177,6 +173,17 @@ fetch_status(uchar_t status_type, uchar_t status[], int maxlen)
 		status[5] = FW_VERSION_H;
 		status[6] = FW_VERSION_L;
 		return(7);
+
+	case RADIO_STATUS_DYNAMIC:
+		/*
+		 * Dynamic status.
+		 */
+		status[1] = libradio_get_state();
+		status[2] = (battery_voltage >> 8) & 0xff;
+		status[3] = (battery_voltage & 0xff);
+		status[4] = (oil_level >> 8) & 0xff;
+		status[5] = (oil_level & 0xff);
+		return(6);
 	}
 	return(0);
 }

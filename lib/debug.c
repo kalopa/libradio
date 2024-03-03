@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,18 +52,29 @@
 #include "internal.h"
 
 /*
- * Radio debug function.
+ * Radio debug function. Read a character from the serial port, and
+ * perform some sort of radio function as a result. Useful for debugging
+ * the state of the radio and/or the state of the communications layer.
  */
 void
 libradio_debug()
 {
-	printf("%d>", irq_fired);
-	switch (getchar()) {
+	char ch;
+
+	if ((ch = getchar()) == '\n' || ch == '\r') {
+		putchar('\n');
+		return;
+	}
+	printf("%d>", libradio_irq_fired());
+	switch (ch) {
+	case '0': case '1': case '2': case '3': case '4':
+	case '5': case '6': case '7': case '8': case '9':
+		ch -= '0';
+		printf("-> %d\n", ch);
+		radio.my_channel = ch;
+		break;
 	case 'r':
 		_bootstrap();
-		break;
-	case 'd':
-		libradio_dump();
 		break;
 	case 'i':
 		libradio_irq_enable(1);
@@ -77,101 +88,48 @@ libradio_debug()
 		libradio_handle_packet();
 		printf("handle packet\n");
 		break;
-	case '0':
+	case 'p':
 		libradio_get_part_info();
 		printf("PART: %d/%d/%d/%d/%d/%d\n", radio.chip_rev, radio.part_id,
 						radio.pbuild, radio.device_id,
 						radio.customer, radio.rom_id);
 		break;
-	case '1':
+	case 'f':
 		libradio_get_func_info();
 		printf("FUNC: %d/%d/%d/%d/%d\n", radio.rev_ext, radio.rev_branch,
 							radio.rev_int, radio.patch,
 							radio.func);
 		break;
-	case '2':
+	case 'c':
 		libradio_get_chip_status();
 		printf("CHIP:%x/%x/%x\n", radio.chip_pending, radio.chip_status,
 						radio.cmd_error);
 		break;
-	case '3':
+	case 'd':
 		libradio_request_device_status();
 		printf("DEVST:%d,CH%d\n", radio.curr_state, radio.curr_channel);
 		break;
-	case '4':
+	case 's':
 		libradio_get_int_status();
-		printf("INTST: I%x/%x,P%x/%x,M%x/%x,C%x/%x\n",
+		printf("INTST:I%x/%x,P%x/%x,M%x/%x,C%x/%x\n",
 					radio.int_pending, radio.int_status,
 					radio.ph_pending, radio.ph_status,
 					radio.modem_pending, radio.modem_status,
 					radio.chip_pending, radio.chip_status);
 		break;
-	case '5':
+	case 'G':
+		libradio_get_fifo_info(03);
+	case 'g':
 		libradio_get_fifo_info(0);
 		printf("FIFO RX:%d,TX:%d\n", radio.rx_fifo, radio.tx_fifo);
 		break;
-	case '6':
+	case 'z':
 		libradio_ircal();
 		break;
-	case 'p':
+	case 'P':
 		libradio_get_property(0x100, 4);
 		break;
 	default:
 		putchar('\n');
 	}
-}
-
-/*
- * Dump the radio output state
- */
-void
-libradio_dump()
-{
-	printf(">> LibRadio Overall State/Time:-\n");
-	printf("State:\t%d\n", radio.state);
-	printf("Tens of Minutes:\t%d\n", radio.tens_of_minutes);
-	printf("Millisecond Ticks:\t%d\n", radio.ms_ticks);
-	printf("Slow Period:\t%d\n", radio.slow_period);
-	printf("Fast Period:\t%d\n", radio.fast_period);
-	printf("Period:\t%d\n", radio.period);
-	printf("Heart Beat:\t%d\n", radio.heart_beat);
-	printf("Date:\t%d\n", radio.date);
-	printf("Main Ticks:\t%d\n", radio.main_ticks);
-	printf("Timeout:\t%d\n", radio.timeout);
-	printf("Catch IRQ:\t%d\n", radio.catch_irq);
-	printf(">> Node and channel identification:-\n");
-	printf("My Channel:\t%d\n", radio.my_channel);
-	printf("Current Channel:\t%d\n", radio.curr_channel);
-	printf("My Node ID:\t%d\n", radio.my_node_id);
-	printf("Category:\t%d/%d\n", radio.cat1, radio.cat2);
-	printf("Number:\t%d/%d\n", radio.num1, radio.num2);
-	printf(">> Radio settings:-\n");
-	printf("Chip Revision:\t%d\n", radio.chip_rev);
-	printf("Part ID:\t%d\n", radio.part_id);
-	printf("PBuild:\t%d\n", radio.pbuild);
-	printf("Device ID:\t%d\n", radio.device_id);
-	printf("Customer:\t%d\n", radio.customer);
-	printf("ROM ID:\t%d\n", radio.rom_id);
-	printf("Revision Ext:\t%d\n", radio.rev_ext);
-	printf("Revision Branch:\t%d\n", radio.rev_branch);
-	printf("Revision Int:\t%d\n", radio.rev_int);
-	printf("Patch:\t%d\n", radio.patch);
-	printf("Func:\t%d\n", radio.func);
-	printf(">> Radio parameters:-\n");
-	printf("# of RX Packets:\t%d\n", radio.npacket_rx);
-	printf("# of TX Packets:\t%d\n", radio.npacket_tx);
-	printf("Current State:\t%d\n", radio.curr_state);
-	printf("Radio Active:\t%d\n", radio.radio_active);
-	printf("RX FIFO:\t%d\n", radio.rx_fifo);
-	printf("TX FIFO:\t%d\n", radio.tx_fifo);
-	printf("INT Pending:\t%d\n", radio.int_pending);
-	printf("INT Status:\t%d\n", radio.int_status);
-	printf("PH Pending:\t%d\n", radio.ph_pending);
-	printf("PH Status:\t%d\n", radio.ph_status);
-	printf("Modem Pending:\t%d\n", radio.modem_pending);
-	printf("Modem Status:\t%d\n", radio.modem_status);
-	printf("Chip Pending:\t%d\n", radio.chip_pending);
-	printf("Chip Status:\t%d\n", radio.chip_status);
-	printf("Command Error:\t%d\n", radio.cmd_error);
-	printf("Saw RX Packet:\t%d\n", radio.saw_rx);
 }

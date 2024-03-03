@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -54,7 +54,6 @@
 uchar_t			state = IO_STATE_NEWLINE;
 uchar_t			value;
 struct channel	*curr_chp;
-struct packet	*curr_pp;
 
 /*
  *
@@ -70,7 +69,7 @@ process_input()
 	 */
 	if (ch == '\n' || ch == '\r') {
 		if (state >= IO_STATE_WAITCMD)
-			enqueue(curr_chp, curr_pp);
+			enqueue(curr_chp);
 		state = IO_STATE_NEWLINE;
 		return;
 	}
@@ -97,23 +96,18 @@ process_input()
 			/*
 			 * Invalid channel - abort!
 			 */
-			response(1);
+			reply(RADIO_CTLERR_INVALID_CHANNEL);
 			break;
 		}
 		curr_chp = &channels[value];
-		if (curr_chp->state == LIBRADIO_CHSTATE_EMPTY)
-			curr_chp->offset = 0;
-		else {
-			if (curr_chp->offset + 3 >= MAX_FIFO_SIZE) {
-				/*
-				 * Too much data for this channel. Abort!
-				 */
-				response(2);
-				break;
-			}
+		if (curr_chp->state > LIBRADIO_CHSTATE_EMPTY) {
+			/*
+			 * Too much data for this channel. Abort!
+			 */
+			reply(RADIO_CTLERR_BUSY);
+			break;
 		}
 		curr_chp->state = LIBRADIO_CHSTATE_ADDING;
-		curr_pp = (struct packet *)&curr_chp->payload[curr_chp->offset];
 		state = IO_STATE_WAITNODE;
 		value = 0;
 		break;
@@ -163,17 +157,17 @@ process_input()
 
 	case STATE(IO_STATE_WAITNODE, ':'):
 		state = IO_STATE_WAITCMD;
-		curr_pp->node = value;
+		curr_chp->packet.node = value;
 		value = 0;
 		break;
 
 	case STATE(IO_STATE_WAITCMD, ':'):
 	case STATE(IO_STATE_WAITCMD, '.'):
-		curr_pp->cmd = value;
-		curr_pp->len = 0;
+		curr_chp->packet.cmd = value;
+		curr_chp->packet.len = 0;
 		value = 0;
 		if (ch == '.') {
-			enqueue(curr_chp, curr_pp);
+			enqueue(curr_chp);
 			state = IO_STATE_WAITNL;
 		} else
 			state = IO_STATE_WAITDATA;
@@ -181,25 +175,25 @@ process_input()
 
 	case STATE(IO_STATE_WAITDATA, ','):
 	case STATE(IO_STATE_WAITDATA, '.'):
-		if ((curr_chp->offset + curr_pp->len) >= (MAX_FIFO_SIZE - 2)) {
+		if (curr_chp->packet.len >= MAX_PAYLOAD_SIZE) {
 			/*
 			 * Too much data for this channel. Abort! Note that we reserve
 			 * two bytes to specify node:0,len:0 at the end.
 			 */
-			response(3);
+			reply(RADIO_CTLERR_TOO_BIG);
 			break;
 		}
-		curr_pp->data[curr_pp->len++] = value;
+		curr_chp->packet.data[curr_chp->packet.len++] = value;
 		value = 0;
 		if (ch == '.') {
-			enqueue(curr_chp, curr_pp);
+			enqueue(curr_chp);
 			state = IO_STATE_WAITNL;
 		}
 		break;
 
 	default:
 		if (state != IO_STATE_WAITNL)
-			response(4);
+			reply(RADIO_CTLERR_NEWLINE);
 		break;
 	}
 }
@@ -208,7 +202,7 @@ process_input()
  *
  */
 void
-response(uchar_t code)
+reply(uchar_t code)
 {
 	if (code == 0)
 		printf("<+\n");

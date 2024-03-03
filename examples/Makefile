@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights
+# Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights
 # reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -42,7 +42,7 @@ ASRCS=
 CSRCS=	oiltank.c
 BIN=	oiltank
 
-SERIAL_DEVICE=/dev/ttyUSB0:38400
+SERIAL_DEVICE?=/dev/ttyUSB0:38400
 
 include ../avr.mk
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2019-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -59,7 +59,6 @@ libradio_command(struct packet *pp)
 {
 	int i, len, addr, rchan;
 
-	printf("CMDRCV:%d (len:%d,S%d)\n", pp->cmd, pp->len, radio.state);
 	if (pp->cmd != RADIO_CMD_ACTIVATE && radio.state < LIBRADIO_STATE_ACTIVE)
 		return;
 	switch (pp->cmd) {
@@ -79,32 +78,34 @@ libradio_command(struct packet *pp)
 		/*
 		 * Return a status packet on the specified channel.
 		 */
-		if (pp->len != (PACKET_HEADER_SIZE + 3))
+		if (pp->len != 3)
 			break;
 		rchan = pp->data[0];
 		addr = pp->data[1];
 		i = pp->data[2];
-		printf(">> Send status type %d to %d\n", i, rchan);
-		if ((len = fetch_status(i, statusbuffer, MAX_RESPONSE_SIZE)) > 0)
+		if ((len = fetch_status(i, statusbuffer, MAX_RESPONSE_SIZE)) > 0) {
+			printf("Sending status of %d to %d\n", len, rchan);
 			libradio_send_response(RADIO_STATUS_RESPONSE, rchan, addr, len, statusbuffer);
+		}
 		break;
 
 	case RADIO_CMD_ACTIVATE:
 		/*
 		 * An activation request! See if it's for us, and if so, activate.
 		 */
-		if (pp->len != (PACKET_HEADER_SIZE + 6))
+		if (pp->len != 6)
 			break;
 		printf(">> Activate! %d/%d/%d/%d\n", pp->data[2], pp->data[3], pp->data[4], pp->data[5]);
 		printf(">> ME: %d/%d/%d/%d\n", radio.cat1, radio.cat2, radio.num1, radio.num2);
-		if (pp->data[2] == radio.cat1 &&
-					pp->data[3] == radio.cat2 &&
-					pp->data[4] == radio.num1 &&
-					pp->data[5] == radio.num2) {
-			radio.my_channel = pp->data[0];
-			radio.my_node_id = pp->data[1];
-			printf("ACTIVATED! [C%dN%d]\n", radio.my_channel, radio.my_node_id);
+		if (pp->data[2] != radio.cat1 ||
+					pp->data[3] != radio.cat2 ||
+					pp->data[4] != radio.num1 ||
+					pp->data[5] != radio.num2) {
+			break;
 		}
+		radio.my_channel = pp->data[0];
+		radio.my_node_id = pp->data[1];
+		printf("ACTVD! [C%dN%d]\n", radio.my_channel, radio.my_node_id);
 		libradio_set_state(LIBRADIO_STATE_ACTIVE);
 		break;
 
@@ -112,9 +113,9 @@ libradio_command(struct packet *pp)
 		/*
 		 * Deactivate this device.
 		 */
-		if (pp->len != PACKET_HEADER_SIZE)
+		if (pp->len != 0)
 			break;
-		printf(">> Deactivate...\n");
+		printf(">> DeACTVD\n");
 		radio.my_channel = radio.my_node_id = 0;
 		libradio_set_state(LIBRADIO_STATE_WARM);
 		break;
@@ -123,7 +124,7 @@ libradio_command(struct packet *pp)
 		/*
 		 * Set the "tens of minutes" value thus enabling the real-time clock.
 		 */
-		if (pp->len != (PACKET_HEADER_SIZE + 1))
+		if (pp->len != 1)
 			break;
 		radio.tens_of_minutes = pp->data[0];
 		printf(">> Set Time: %u\n", radio.tens_of_minutes);
@@ -134,7 +135,7 @@ libradio_command(struct packet *pp)
 		 * Set the date. We don't use this information, it is
 		 * application-specific.
 		 */
-		if (pp->len != (PACKET_HEADER_SIZE + 2))
+		if (pp->len != 2)
 			break;
 		radio.date = (pp->data[0] << 8 | pp->data[1]);
 		printf(">> Set Date: %u\n", radio.date);
@@ -145,9 +146,9 @@ libradio_command(struct packet *pp)
 		 * Read up to 16 bytes of EEPROM data. The result is saved in a
 		 * packet buffer and transmitted on the specified channel.
 		 */
-		if (pp->len != (PACKET_HEADER_SIZE + 4))
+		if (pp->len != 4)
 			break;
-		printf(">> Read EEPROM...\n");
+		printf(">> Read EEPROM\n");
 		rchan = pp->data[0];
 		len = pp->data[1];
 		addr = (pp->data[2] << 8 | pp->data[3]);
@@ -161,9 +162,9 @@ libradio_command(struct packet *pp)
 		/*
 		 * Write up to 16 bytes of EEPROM data.
 		 */
-		if (pp->len < (PACKET_HEADER_SIZE + 3) || pp->len > (PACKET_HEADER_SIZE + 22))
+		if (pp->len < 3 || pp->len > 22)
 			break;
-		printf(">> Write EEPROM (%d bytes)...\n", pp->len - 2);
+		printf(">> Write EEPROM (%db)\n", pp->len - 2);
 		addr = (pp->data[0] << 8 | pp->data[1]);
 		printf("Addr: %d\n", addr);
 		for (i = 0; i < (pp->len - 2); i++, addr++)

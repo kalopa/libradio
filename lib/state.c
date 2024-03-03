@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2019-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,7 +41,10 @@
 #include "internal.h"
 
 /*
- * Helper function to return the current state.
+ * Helper function to return the current system state. This is not the
+ * state of the radio, or the state of a particular channel packet,
+ * but the overall state of operation. Returning, for example,
+ * LIBRADIO_STATE_ACTIVE.
  */
 uchar_t
 libradio_get_state()
@@ -50,9 +53,19 @@ libradio_get_state()
 }
 
 /*
- * Update the state and the associated parameters. Note that this should be
- * idempotent in that it will not change anything unless there is an actual
- * state change.
+ * What channel am I on? Return the saved value of what channel the
+ * radio thinks we're on.
+ */
+uchar_t
+libradio_get_my_channel()
+{
+	return(radio.curr_channel);
+}
+
+/*
+ * Update the state and the associated parameters. Note that this should
+ * be idempotent in that it will not change anything unless there is an
+ * actual state change.
  */
 void
 libradio_set_state(uchar_t new_state)
@@ -102,7 +115,7 @@ libradio_set_state(uchar_t new_state)
 			radio.timeout = 6000 / radio.fast_period;
 		else
 			radio.timeout = (int )(12000L / (long )radio.fast_period);
-		libradio_set_delay(100);
+		libradio_set_delay(500);
 		break;
 
 	case LIBRADIO_STATE_ERROR:

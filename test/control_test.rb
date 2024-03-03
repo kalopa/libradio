@@ -2,10 +2,34 @@
 #
 require 'serialport'
 
-DEVICE = "/dev/ttyS0"
-SPEED = 38400
-
 $timeout = nil
+
+COMMAND_NOOP = 0
+COMMAND_FIRMWARE = 1
+COMMAND_STATUS = 2
+COMMAND_ACTIVATE = 3
+COMMAND_DEACTIVATE = 4
+COMMAND_SET_TIME = 5
+COMMAND_SET_DATE = 6
+COMMAND_READ_EEPROM = 7
+COMMAND_WRITE_EEPROM = 8
+COMMAND_STATUS_RESPONSE = 9
+COMMAND_EEPROM_RESPONSE = 10
+COMMAND_USER0 = 16
+COMMAND_USER1 = 17
+COMMAND_USER2 = 18
+COMMAND_USER3 = 19
+COMMAND_USER4 = 20
+
+CONTROL_ERRORS = [
+  "* No Error", "Invalid Channel", "Busy", "Too Much Data", "Too Big",
+  "Newline", "Radio Not Active", "Power Failure", "Bad Command"
+].freeze
+
+RADIO_STATES = [
+  "Startup", "Error State", "Low Battery", "Cold Start", "Warm Start",
+  "Listening", "Active"
+].freeze
 
 #
 # Initialize the radio controller.
@@ -26,6 +50,14 @@ def receive_thread(sp)
     end
     puts "#{Time.now.strftime('%T')}: #{line} (#{bad_count})"
     $timeout = Time.now + 60
+    if line =~ /^<-/
+      code, state = line[2..].split /\//
+      code = code.to_i
+      state = state.to_i
+      puts "?ERROR - #{CONTROL_ERRORS[code]} (code #{code})."
+      puts "Radio state: #{RADIO_STATES[state]} (state #{state})."
+      exit 1 if code != 5 #and code != 2
+    end
     if line =~ /^<A1:/
       # <A1:27598:9:0,6,102,3,112,0,0,0,6 (0)
       # chno:<A1, ts: 10206, cmd: 9, args: ["0", "6", "103", "3", "112", "0", "0", "0", "20"]
@@ -41,15 +73,16 @@ def receive_thread(sp)
         #
         # Status response.
         if args[0] == 0
-          bv = (args[3] << 8) + args[4]
-          rx = (args[5] << 8) + args[6]
-          tx = (args[7] << 8) + args[8]
-          puts ">> Dynamic status: Radio State: #{args[1]}. ToM: #{args[2]}, Batt#{bv}. RX #{rx}, TX #{tx}."
+          bv = (args[3] << 8) + args[4] if args[3] and args[4]
+          rx = (args[5] << 8) + args[6] if args[5] and args[6]
+          tx = (args[7] << 8) + args[8] if args[7] and args[8]
+            puts ">> Dynamic status: Radio State: #{args[1]}. ToM: #{args[2]}, Batt#{bv}. RX #{rx}, TX #{tx}."
         else
           puts ">> Static status: ID: #{args[1]}/#{args[2]}/#{args[3]}/#{args[4]}. V#{args[5]}.#{args[6]}."
         end
       end
     end
+    $stdout.flush
   end
   puts "RX Done."
 end
@@ -95,22 +128,27 @@ def transmit_thread(sp)
         sp.puts ">T\r\n"
       when 2
         # Activate device 34-5-35-1.
-        client_activate(sp, [1, 3, 34, 5, 35, 2])
+        client_activate(sp, [1, 3, 34, 5, 35, 1])
       when 3
-        # Request dynamic status
-        #request_status(sp, 1, 3, 0)
-      when 4
         # Request static status
+        #request_status(sp, 1, 3, 0)
+        request_status(sp, 1, 3, 1)
+      when 4
+        # Request dynamic status
         #request_status(sp, 1, 3, 1)
+        request_status(sp, 1, 3, 1)
       when 5
         # Set direction (FORWARD)
-        send_command sp, chan: 1, node: 3, cmd: 17, data: [1].flatten
+        #send_command sp, chan: 1, node: 3, cmd: COMMAND_USER1, data: [1].flatten
+        request_status(sp, 1, 3, 1)
       when 6
         # Set loco speed
-        send_command sp, chan: 1, node: 3, cmd: 18, data: [127].flatten
+        #send_command sp, chan: 1, node: 3, cmd: COMMAND_USER2, data: [32].flatten
+        request_status(sp, 1, 3, 2)
       end
     end
     lcount += 1
+    $stdout.flush
     sleep 1
   end
 end
@@ -118,19 +156,23 @@ end
 #
 #
 def activate(sp)
-  send_command sp, chan: 0, node: 0, cmd: 3, data: [0, 1, 0].flatten
+  my_channel = 0
+  my_node_id = 1
+  send_command sp, chan: 0, node: 0, cmd: COMMAND_ACTIVATE, data: [my_channel, my_node_id, 0].flatten
 end
 
 #
 # Activate the client device
 def client_activate(sp, args)
-  send_command sp, chan: 0, node: 0, cmd: 3, data: args.flatten
+  send_command sp, chan: 0, node: 0, cmd: COMMAND_ACTIVATE, data: args.flatten
 end
 
 #
 # Request device status
-def request_status(sp, chan, node, type)
-  send_command sp, chan: chan, node: node, cmd: 2, data: [3, 1, type].flatten
+def request_status(sp, chan, node, status_type)
+  response_chan = 1
+  response_node = 1
+  send_command sp, chan: chan, node: node, cmd: COMMAND_STATUS, data: [response_chan, response_node, status_type].flatten
 end
 
 #
@@ -140,7 +182,7 @@ def set_time(sp)
   ticks = ((tstamp.to_f * 100.0) % 60000.0).to_i
   tod = ((tstamp.to_f / 600.0) % 144.0).to_i
   puts "Time: #{tod}-#{ticks}"
-  send_command sp, node: 1, cmd: 5, data: [ticks % 256, ticks / 256, tod]
+  send_command sp, node: 1, cmd: COMMAND_SET_TIME, data: [ticks % 256, ticks / 256, tod]
 end
 
 #
@@ -149,13 +191,13 @@ def set_date(sp)
   tstamp = Time.now
   date = ((tstamp.year - 2000) * 12 + (tstamp.mon - 1)) * 32 + tstamp.day
   puts "Date: #{date}"
-  send_command sp, node: 1, cmd: 6, data: [date % 256, date / 256]
+  send_command sp, node: 1, cmd: COMMAND_SET_DATE, data: [date % 256, date / 256]
 end
 
 #
 #
 def set_channel(sp, channo, state)
-  send_command sp, chan: 0, node: 1, cmd: 16, data: [channo, state].flatten
+  send_command sp, chan: 0, node: 1, cmd: COMMAND_USER0, data: [channo, state].flatten
 end
 
 #
@@ -177,9 +219,15 @@ def reset(sp)
   sp.puts ">R"
 end
 
-sp = SerialPort.open(DEVICE, SPEED)
+if ENV['SERIAL_DEVICE'].nil?
+  puts "needs `export SERIAL_DEVICE=/dev/ttyUSB0:38400` first"
+  exit 2
+end
+device, speed = ENV['SERIAL_DEVICE'].split /:/
+sp = SerialPort.open(device, speed.to_i)
 sp.read_timeout = 10000
-p sp
+puts "Device: #{device}"
+puts "Speed: #{speed}"
 
 setup(sp)
 rxth = Thread.new {receive_thread(sp)}

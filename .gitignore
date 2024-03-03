@@ -12,6 +12,7 @@
 *.elf
 *.lst
 *.swp
+*.log
 
 # Linker output
 *.ilk

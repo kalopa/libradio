@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2019-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,76 +43,53 @@ struct channel	rxchan;
 struct channel	txchan;
 
 /*
- *
+ * Receive a packet from the radio, and call libradio_command() with
+ * the received packet if the packet was intended for us.
  */
 void
 libradio_handle_packet()
 {
-	int i;
 	struct channel *chp = &rxchan;
-	struct packet *pp;
 
 	/*
 	 * Look for a received packet.
 	 */
 	if (libradio_recv(chp, radio.my_channel)) {
-		printf("Packet RX! (ch%d,tk:%u,len:%d)\n", radio.my_channel, radio.ms_ticks, chp->offset);
-		for (i = 0; i < chp->offset;) {
-			pp = (struct packet *)&chp->payload[i];
-			printf("N%d,L%d,C%d\n", pp->node, pp->len, pp->cmd);
-			if (pp->len == 0)
-				break;
-			if (pp->node == 0 || pp->node == radio.my_node_id)
-				libradio_command(pp);
-			i += pp->len;
-		}
-		libradio_set_rx(radio.my_channel);
+		if (chp->packet.node == 0 || chp->packet.node == radio.my_node_id)
+			libradio_command(&chp->packet);
 	}
 }
 
 /*
- * Send a response packet to the remote channel/address.
-
- >> Send status type 1 to 1
-TX Response 9 on C1N1, len: 6
-Rstate:0 (off0)
-
+ * Send a response packet to the remote channel/address. Used whenever
+ * we receive a request for information such as a STATUS request or an
+ * EEPROM read request.
  */
 void
 libradio_send_response(uchar_t cmd, uchar_t chan, uchar_t addr, uchar_t len, uchar_t buffer[])
 {
 	int i;
 	struct channel *chp = &txchan;
-	struct packet *pp;
-	static int last_chan = 0;
 
-	printf("TX Response %d on C%dN%d, len: %d\n", cmd, chan, addr, len);
-	printf("Rstate:%d (off%d)\n", chp->state, chp->offset);
-	/*
-	 * Send a "tens of minutes" time packet.
-	 */
-	if (chan != last_chan) {
-		last_chan = chan;
-		chp->offset = 0;
-	} else {
-		if (chp->state == LIBRADIO_CHSTATE_EMPTY)
-			chp->offset = 0;
-		if (chp->offset > 24)
-			return;
-	}
 	chp->state = LIBRADIO_CHSTATE_TRANSMIT;
 	chp->priority = 10;
-	pp = (struct packet *)&chp->payload[chp->offset];
-	pp->node = addr;
-	pp->len = len + PACKET_HEADER_SIZE;
-	pp->cmd = cmd;
+	chp->packet.node = addr;
+	chp->packet.len = len;
+	chp->packet.cmd = cmd;
+	if (len > MAX_PAYLOAD_SIZE)
+		len = MAX_PAYLOAD_SIZE;
 	for (i = 0; i < len; i++)
-		pp->data[i] = buffer[i];
-	chp->offset += pp->len;
-	chp->payload[chp->offset++] = 0;
-	chp->payload[chp->offset++] = 0;
+		chp->packet.data[i] = buffer[i];
 	if (libradio_send(chp, chan) != 0) {
 		chp->state = LIBRADIO_CHSTATE_EMPTY;
 		chp->priority = 0;
 	}
+	/*
+	 * Busy-wait for the transmission to end. Ideally we'd use the
+	 * state machine and not go listening for new RX packets until
+	 * this was done (or one clock tick).
+	 */
+	while (libradio_request_device_status() == SI4463_STATE_TX)
+		;
+	libradio_recv_start();
 }

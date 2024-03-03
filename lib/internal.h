@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -84,6 +84,16 @@
 #define SI4463_STATE_RX_TUNE		6
 #define SI4463_STATE_TX				7
 #define SI4463_STATE_RX				8
+
+/*
+ * Return codes from spi_send()
+ */
+#define SPI_SEND_OK				0
+#define SPI_SEND_WRITE_FAIL		1
+#define SPI_SEND_STATUS_FAIL	2
+#define SPI_SEND_ACK_FAIL		3
+#define SPI_SEND_READ_FAIL		4
+#define SPI_SEND_TIMEOUT		5
 
 /*
  * Main status. Here is where the various status parameters exchanged with
@@ -207,7 +217,6 @@ struct libradio {
 };
 
 extern uchar_t			spi_data[MAX_SPI_BLOCK];
-extern uchar_t			irq_fired;
 extern struct libradio	radio;
 
 /*
@@ -216,10 +225,10 @@ extern struct libradio	radio;
 void	spi_init();
 int		spi_byte(uchar_t);
 uchar_t	spi_send(uchar_t, uchar_t);
-void	spi_rxpacket(struct channel *chp);
-void	spi_txpacket(struct channel *);
+uchar_t	spi_rxpacket(struct channel *chp);
+uchar_t	spi_txpacket(struct channel *);
+uchar_t	spi_error(uchar_t);
 void	libradio_set_song(uchar_t);
-
 void	libradio_command(struct packet *);
 void	libradio_send_response(uchar_t, uchar_t, uchar_t, uchar_t, uchar_t []);
 

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
+# Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -42,8 +42,8 @@ DEVICE=	atmega328p
 ASRCS=	locore.S ioinit.S radio_irq.S setled.S \
 	setss.S spi_irq.S testpt.S watchdog.S
 CSRCS=	init.c loop.c state.c handle.c command.c \
-	rxtx.c power.c radio.c clock.c spi.c debug.c \
-	time.c power_mode.c
+	rxtx.c power.c radio.c clock.c spi.c \
+	debug.c wait.c time.c power_mode.c
 
 include ../avr.mk
 

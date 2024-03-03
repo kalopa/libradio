@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -74,22 +74,29 @@ spi_byte(uchar_t byte)
 		;
 	if (i == 64000)
 		return(-1);
-	return(SPDR);
+	return(SPDR & 0xff);
 }
 
 /*
- *
+ * Send a sequence (send_len) of bytes to the the radio (in the spi_data[]
+ * buffer) and retrieve a sequence (recv_len) of bytes in response. This
+ * can be used to write data (for example to the FIFO), to exchange data
+ * (such as sending a command), and to read data (for example, reading
+ * from the RX FIFO). For every byte we send, we get one back.
  */
 uchar_t
 spi_send(uchar_t send_len, uchar_t recv_len)
 {
 	int i, j, k;
 
+	/*
+	 * Do this piece with the SLAVE_SELECT (SS) bit enabled.
+	 */
 	_setss(1);
 	for (i = 0; i < send_len; i++) {
 		if (spi_byte(spi_data[i]) == -1) {
 			_setss(0);
-			return(0);
+			return(SPI_SEND_WRITE_FAIL);
 		}
 	}
 	_setss(0);
@@ -98,15 +105,19 @@ spi_send(uchar_t send_len, uchar_t recv_len)
 		 * Start by sending a READ_CMD_BUFF command.
 		 */
 		_setss(1);
-		if (spi_byte(0x44) < 0 || (k = spi_byte(0xff)) < 0) {
+		if (spi_byte(0x44) < 0) {
 			_setss(0);
-			return(0);
+			return(SPI_SEND_STATUS_FAIL);
+		}
+		if ((k = spi_byte(0xff)) < 0) {
+			_setss(0);
+			return(SPI_SEND_ACK_FAIL);
 		}
 		if (k == 0xff) {
 			for (j = 0; j < recv_len; j++) {
 				if ((k = spi_byte(0xff)) < 0) {
 					_setss(0);
-					return(0);
+					return(SPI_SEND_READ_FAIL);
 				}
 				spi_data[j] = k;
 			}
@@ -118,76 +129,105 @@ spi_send(uchar_t send_len, uchar_t recv_len)
 		 */
 		_setss(0);
 	}
-	return(i == MAX_COUNT ? 0 : 1);
+	return(i == MAX_COUNT ? SPI_SEND_TIMEOUT : SPI_SEND_OK);
 }
 
 /*
- * Copy a channel packet from the RX FIFO. Note that we will overwrite
- * the system clock ticks during this function, so beware...
+ * Copy a channel packet from the RX FIFO. As the packet is retrieved,
+ * validate the checksum, Note that we will overwrite the system clock
+ * ticks (ms_ticks) during this function, so beware...
  */
-void
+uchar_t
 spi_rxpacket(struct channel *chp)
 {
-	int i;
+	int i, len;
 	uchar_t *cp, csum;
-	uint_t myticks;
 
+	/*
+	 * Pull the entire packet from the RX FIFO
+	 */
+	if ((len = radio.rx_fifo) > sizeof(struct packet))
+		len = sizeof(struct packet);
 	_setss(1);
 	spi_byte(SI4463_READ_RX_FIFO);
-	myticks = spi_byte(0) << 8;
-	myticks |= spi_byte(0);
-	csum = spi_byte(0);
-	chp->offset = radio.rx_fifo - 3;
-	for (i = 0, cp = chp->payload; i < chp->offset; i++, cp++) {
-		*cp = spi_byte(0x00);
-		csum ^= *cp;
-	}
+	for (i = 0, cp = (uchar_t *)&chp->packet; i < len; i++)
+		*cp++ = spi_byte(0x00);
 	_setss(0);
 	/*
-	 * Throw away dud packets.
+	 * Now, check the checksum and save the system clock ticks.
 	 */
-	if (csum == 0x00) {
+	if (chp->packet.len > MAX_PAYLOAD_SIZE)
+		chp->packet.len = MAX_PAYLOAD_SIZE;
+	len = PACKET_HEADER_LEN + chp->packet.len;
+	for (i = csum = 0, cp = (uchar_t *)&chp->packet; i < len; i++)
+		csum ^= *cp++;
+	/*
+	 * If the checksum is good, save the network time in clock ticks. If
+	 * it's bad, set the command to be a No-Op and store the bad CS for
+	 * posterity.
+	 */
+	if (csum != 0x00)
+		return(0);
+	if (chp->packet.cmd < RADIO_STATUS_RESPONSE) {
+		/*
+		 * Only accept time values from control
+		 */
 		cli();
-		radio.ms_ticks = myticks;
+		radio.ms_ticks = chp->packet.ticks;
 		sei();
-	} else
-		chp->offset = 0;
+	}
+	return(1);
 }
 
 /*
- * Copy a channel packet to the TX FIFO. The trick here is that we
- * send the command and we spoof first two bytes, wiwhich are the
- * clock ticks. They're not saved in the packet but instead copied
- * out to the FIFO directly. The advantage to this is the lack of
- * lag.
+ * Copy a channel packet to the TX FIFO. We update the ticks value in
+ * the packet at the last possible moment so that it is as accurate
+ * as possible. As it's a 16bit quantity, we do this with interrupts
+ * disabled. Also, the packet checksum is computed at the same time.
  */
-void
+uchar_t
 spi_txpacket(struct channel *chp)
 {
-	int i;
+	int i, len;
 	uchar_t *cp, csum;
-	uint_t myticks;
 
-	for (csum = i = 0, cp = chp->payload; i < chp->offset; i++)
+	/*
+	 * First off, store our current clock timer ticks in the packet
+	 * and compute the checksum. The checksum is computed such that
+	 * a subsequent XOR of all the bytes in the packet will result
+	 * in a value of 0x00.
+	 */
+	if (chp->packet.len > MAX_PAYLOAD_SIZE)
+		return(0);
+	len = PACKET_HEADER_LEN + chp->packet.len;
+	cli();
+	chp->packet.ticks = radio.ms_ticks;
+	sei();
+	chp->packet.csum = csum = 0x00;
+	for (i = 0, cp = (uchar_t *)&chp->packet; i < len; i++)
 		csum ^= *cp++;
-	csum ^= 0xff;
+	chp->packet.csum = csum;
+	/*
+	 * Now load the packet data into the TX FIFO.
+	 */
 	_setss(1);
 	spi_byte(SI4463_WRITE_TX_FIFO);
-	cli();
-	myticks = radio.ms_ticks;
-	sei();
-	spi_byte((myticks >> 8) & 0xff);
-	spi_byte(myticks & 0xff);
-	spi_byte(csum ^ 0xff);
-	/*
-	 * Send out the packet length, minus the time stamp we've already sent.
-	 * Send nulls if we've run out of data.
-	 */
-	for (i = 0, cp = chp->payload; i < (SI4463_PACKET_LEN - 3); i++) {
-		if (i < chp->offset)
+	for (i = 0, cp = (uchar_t *)&chp->packet; i < SI4463_PACKET_LEN; i++) {
+		if (i < len)
 			spi_byte(*cp++);
 		else
-			spi_byte(0);
+			spi_byte(0xff);
 	}
 	_setss(0);
+	return(1);
+}
+
+/*
+ * Print an SPI error and return zero.
+ */
+uchar_t
+spi_error(uchar_t i)
+{
+	printf("spi error %d\n", i);
+	return(0);
 }

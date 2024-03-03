@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -82,7 +82,7 @@
 // Command:                  RF_GPIO_PIN_CFG
 // Description:              Configures the GPIO pins.
 */
-#define RF_GPIO_PIN_CFG 0x13, 0x0B, 0x21, 0x22, 0x23, 0x27, 0x00, 0x00
+#define RF_GPIO_PIN_CFG 0x13, 0x60, 0x61, 0x53, 0x54, 0x67, 0x00, 0x00
 
 /*
 // Set properties:           RF_GLOBAL_XO_TUNE_2

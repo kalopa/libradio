@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
+# Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -37,7 +37,7 @@
 DEVICE=	atmega328p
 
 ASRCS=
-CSRCS=	main.c init.c command.c enqueue.c transmit.c input.c
+CSRCS=	main.c init.c command.c enqueue.c transmit.c response.c input.c
 BIN=	radiocon
 FIRMWARE=radiocon.hex
 
@@ -49,7 +49,7 @@ CFLAGS+=	-I../lib
 
 kprog:	$(FIRMWARE)
 	sudo kprog -v -d $(SERIAL_DEVICE) $(FIRMWARE)
-	rm $(FIRMWARE)
+	touch kprog
 
 tags:
 	ctags *.[ch] ../lib/*.[ch]

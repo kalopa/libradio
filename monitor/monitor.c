@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2024, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,17 +45,28 @@
 
 struct channel	recvchan;
 
-char *cmd_names[RADIO_CMD_ADDITIONAL_BASE] = {
-	"NoOp", "Firmware", "StatReq", "Activate", "Deactivate",
-	"SetTime", "SetDate", "RdEE", "WrEE", "StatResp", "EEResp",
-	"Rsvd1", "Rsvd2", "Rsvd3", "Rsvd4", "Rsvd5"
-};
-
 /*
  * Prototypes
  */
-void		hexout(int);
-char		hexdigit(char);
+void		display_packet(struct channel *);
+void		hexdigit(char);
+
+FILE		iodev;
+
+void
+mysetup()
+{
+	FILE *s;
+
+	s = &iodev;
+	s->flags = __SMALLOC;
+	s->get = sio_getc;
+	s->put = sio_putc;
+	s->flags = (__SMALLOC|__SRD|__SWR);
+	stdin = s;
+	stdout = s;
+	stderr = s;
+}
 
 /*
  *
@@ -63,7 +74,7 @@ char		hexdigit(char);
 int
 main()
 {
-	int i;
+	int irqf;
 	struct channel *chp = &recvchan;
 
 	/*
@@ -86,7 +97,8 @@ main()
 	UBRR0 = 25;
 	UCSR0B = (1<<RXCIE0)|(1<<RXEN0)|(1<<TXEN0);
 	UCSR0C = (1<<UCSZ01)|(1<<UCSZ00);
-	(void )fdevopen(sio_putc, sio_getc);
+	//(void )fdevopen(sio_putc, sio_getc);
+	mysetup();
 	sei();
 	_setled(0);
 	printf("\n\nRadio monitor v%d.%d.\n", FW_VERSION_H, FW_VERSION_L);
@@ -100,8 +112,10 @@ main()
 	libradio_set_clock(1, 1);
 	libradio_irq_enable(1);
 	radio.my_channel = radio.curr_channel = 0;
+	libradio_recv_start();
 	radio.my_node_id = 0;
-	libradio_set_song(LIBRADIO_STATE_ACTIVE);
+	libradio_set_state(LIBRADIO_STATE_ACTIVE);
+	libradio_set_delay(100);
 	/*
 	 * Begin the main loop - every clock tick, call the radio loop.
 	 */
@@ -111,40 +125,55 @@ main()
 		 * Call the libradio function to see if there's anything to do. This
 		 * routine only returns after a sleep or if the main clock has ticked.
 		 */
-		while (irq_fired == 0 && libradio_tick_wait() == 0) {
-			if (!sio_iqueue_empty()) {
-				if ((i = getchar()) >= '0' && i <= '9') {
-					i -= '0';
-					printf("Switch to channel %d\n", i);
-					radio.my_channel = i;
-				} else {
-					if ((i = getchar()) == '\r' || i == '\n')
-						putchar('\n');
-				}
-			}
-			_sleep();
-		}
+		irqf = libradio_wait();
+		if (!sio_iqueue_empty())
+			libradio_debug();
 		if (libradio_elapsed_second() && radio.tens_of_minutes > 143)
 			radio.tens_of_minutes = 0;
-		if (irq_fired) {
+		if (irqf) {
+			libradio_get_fifo_info(0);
 			libradio_get_int_status();
 			libradio_get_modem_status();
 			libradio_irq_enable(1);
 		}
-		if (libradio_recv(chp, radio.my_channel) == 0)
-			continue;
-		printf("RSSI%d,%d,%d,%d: ", radio.current_rssi, radio.latch_rssi, radio.ant1_rssi, radio.ant2_rssi);
-		printf("RX ch%d,tk:%u,len:%d: ", radio.my_channel, radio.ms_ticks, chp->offset);
-		printf("Node %d, Len %d ", chp->payload[0], chp->payload[1]);
-		if (chp->payload[2] < RADIO_CMD_ADDITIONAL_BASE)
-			printf("%s ", cmd_names[chp->payload[2]]);
-		else
-			printf("USER%d ", chp->payload[2] - RADIO_CMD_ADDITIONAL_BASE);
-		printf("\nData:");
-		for (i = 3; i < chp->offset; i++)
-			hexout(chp->payload[i] & 0xff);
-		putchar('\n');
+		/*
+		 * If we have a packet, print it out.
+		 */
+		while (radio.rx_fifo >= SI4463_PACKET_LEN) {
+			if (libradio_recv(chp, radio.my_channel))
+				display_packet(chp);
+			libradio_get_fifo_info(0);
+		}
+		_watchdog();
 	}
+}
+
+/*
+ * Display the contents of a single packet.
+ */
+void
+display_packet(struct channel *chp)
+{
+	int i, len, value;
+	uchar_t *cp;
+
+	printf("RX%d,%d/%d:", radio.my_channel, radio.current_rssi, radio.latch_rssi);
+	if (chp->packet.node > 5)
+		printf("N?");
+	if (chp->packet.cmd > 16)
+		printf("C?");
+	if ((len = chp->packet.len) > MAX_PAYLOAD_SIZE) {
+		printf("L?");
+		len = MAX_PAYLOAD_SIZE;
+	}
+	len += PACKET_HEADER_LEN;
+	for (i = 0, cp = (uchar_t *)&chp->packet; i < len; i++) {
+		value = *cp++;
+		putchar((i == 6) ? '.' : ' ');
+		hexdigit((value >> 4) & 15);
+		hexdigit(value & 15);
+	}
+	putchar('\n');
 }
 
 /*
@@ -174,20 +203,12 @@ fetch_status(uchar_t status_type, uchar_t status[], int maxlen)
 }
 
 /*
- * Output a hex number and a space
+ * Print a hex digit.
  */
 void
-hexout(int value)
-{
-	putchar(' ');
-	putchar(hexdigit((value >> 8) & 15));
-	putchar(hexdigit(value & 15));
-}
-
-char
 hexdigit(char ch)
 {
 	if (ch > 9)
 		ch += 7;
-	return(ch + '0');
+	putchar(ch + '0');
 }

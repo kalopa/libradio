@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -101,7 +101,7 @@ clocktick()
 	 * periodic work (like check the battery).
 	 */
 	if ((timer_count += radio.period) >= 100) {
-		timer_count = 0;
+		timer_count -= 100;
 		elapsed_second = 1;
 	}
 	radio.all_ticks++;
@@ -132,21 +132,31 @@ libradio_set_delay(uint_t delay)
 }
 
 /*
- * Wait for the main tick to occur. Called from main code (not ISR). Generally
- * this is a 50ms timer giving a 20Hz main loop. The idea is that you can
- * adjust this delay (see previous function) as needed.
+ * Return the current delay (tick_count).
+ */
+uint_t
+libradio_get_delay()
+{
+	return(radio.tick_count);
+}
+
+/*
+ * Wait for the main tick to occur. Called from main code (not
+ * ISR). Generally this is a 50ms timer giving a 20Hz main loop. The idea
+ * is that you can adjust this delay (see libradio_set_delay()) as needed.
  */
 int
 libradio_tick_wait()
 {
-	int old_value = thread_ok;
+	int run_ok = thread_ok;
 
 	thread_ok = 0;
-	return(old_value);
+	return(run_ok);
 }
 
 /*
- * Check to see if the timer has fired.
+ * Check to see if the seconds timer has fired. Returns TRUE if a second
+ * has elapsed.
  */
 int
 libradio_elapsed_second()
@@ -158,7 +168,8 @@ libradio_elapsed_second()
 }
 
 /*
- * Set the LED "song" based on the state.
+ * Set the LED "song" based on the state. Different flashing patterns
+ * based on the system state.
  */
 void
 libradio_set_song(uchar_t new_state)

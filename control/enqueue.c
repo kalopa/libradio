@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,9 +49,12 @@
  * don't need to transmit it.
  */
 void
-enqueue(struct channel *chp, struct packet *pp)
+enqueue(struct channel *chp)
 {
+	struct packet *pp = &chp->packet;
+
 	printf("ENQ:S%d,N%d,C%d,M%d\n", radio.state, pp->node, pp->cmd, radio.my_node_id);
+	chp->state = LIBRADIO_CHSTATE_TRANSMIT;
 	if (pp->node == radio.my_node_id ||
 				(pp->cmd == RADIO_CMD_ACTIVATE && radio.state < LIBRADIO_STATE_ACTIVE)) {
 		/*
@@ -59,8 +62,8 @@ enqueue(struct channel *chp, struct packet *pp)
 		 * Instead, execute the command. Also, free up the channel buffer
 		 * if this is the only transmission.
 		 */
-		response(mycommand(pp));
-		chp->state = (chp->offset == 0) ? LIBRADIO_CHSTATE_EMPTY : LIBRADIO_CHSTATE_TRANSMIT;
+		reply(mycommand(pp));
+		chp->state = LIBRADIO_CHSTATE_EMPTY;
 		return;
 	}
 	/*
@@ -69,20 +72,18 @@ enqueue(struct channel *chp, struct packet *pp)
 	 */
 	if (radio.state != LIBRADIO_STATE_ACTIVE) {
 		chp->state = LIBRADIO_CHSTATE_EMPTY;
-		response(5);
+		reply(RADIO_CTLERR_NOT_ACTIVE);
 		return;
 	}
 	/*
 	 * Add the node, length and channel to the length. Then update
 	 * the overall offset.
 	 */
-	pp->len += PACKET_HEADER_SIZE;
-	chp->offset += pp->len;
-	printf("CMD:%d %d\n", pp->cmd, chp->offset);
-	//if (pp->cmd == RADIO_CMD_STATUS)
-	//	chp->state = LIBRADIO_CHSTATE_TXRESPOND;
-	//else
+	if (pp->cmd == RADIO_CMD_STATUS)
+		chp->state = LIBRADIO_CHSTATE_TXRESPOND;
+	else
 		chp->state = LIBRADIO_CHSTATE_TRANSMIT;
+	printf("CMD:%d (datalen%d) S%d\n", pp->cmd, chp->packet.len, chp->state);
 	/*
 	 * Calculate the TX priority. This is channel-dependent with
 	 * channel 0 having the highest priority. Multiply this by 8
@@ -99,7 +100,7 @@ enqueue(struct channel *chp, struct packet *pp)
 		if (chp->priority < 0xfc)
 			chp->priority++;
 	}
-	response(0);
+	reply(0);
 }
 
 /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-23, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -77,6 +77,7 @@ libradio_init(uchar_t c1, uchar_t c2, uchar_t n1, uchar_t n2)
 	radio.num1 = n1;
 	radio.num2 = n2;
 	spi_init();
+	libradio_get_fifo_info(03);
 }
 
 /*

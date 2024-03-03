@@ -29,36 +29,49 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * This is the main include file for the radio controller.
+ * This is the main radio controller. On any given radio network,
+ * you need at least one radio controller. It is in charge of managing
+ * all of the client devices. It communicates with a more intelligent
+ * system via the serial port, and schedules radio transmissions on all
+ * of its active channels at regular intervals. It uses the main library
+ * for a lot of the low-level radio functions but the operational state
+ * machine is quite different. For example, if it is in a COLD or WARM
+ * sleep, it is the serial port which will re-activate the software,
+ * not the radio interface.
  */
-#define CONTROL_C1		1
-#define CONTROL_C2		1
-#define CONTROL_N1		1
-#define CONTROL_N2		1
+#include <stdio.h>
+#include <avr/io.h>
+#include <string.h>
 
-#define FW_VERSION_H	2
-#define FW_VERSION_L	4
+#include <libavr.h>
 
-#define BATTERY_LOW		658
-#define BATTERY_OK		800
-
-#define MAX_RADIO_CHANNELS	6
-
-extern struct channel		channels[MAX_RADIO_CHANNELS];
-extern struct channel		*resp_chp;
+#include "libradio.h"
+#include "internal.h"
+#include "control.h"
 
 /*
- * Prototypes.
+ * Deal with a status response from a client. We asked for a STATUS update or
+ * EEPROM data and now the client has sent us what we wanted. Forward the
+ * packet up via the RS232 line and go back to TX mode.
  */
-void	clock_init();
-void	serial_init();
-void	tx_init();
-void	tx_check_queues();
-void	process_input();
-uchar_t	mycommand(struct packet *);
-void	send_time(struct channel *);
-void	enqueue(struct channel *);
-void	txresponse(struct channel *);
-void	set_channel(uchar_t, uchar_t);
-void	local_status(uchar_t);
-void	reply(uchar_t);
+void
+txresponse(struct channel *chp)
+{
+	int i, len, from_chan = 0, from_node = 0;
+	struct packet *pp = &chp->packet;
+
+	from_chan = libradio_get_my_channel();
+	from_node = chp->packet.node;
+	printf("RCV from %d on ch%d\n", from_node, from_chan);
+	if (libradio_recv(chp, from_chan) == 0)
+		return;
+	printf("<%c%d:%u:%d:", from_chan + 'A', from_node, pp->ticks, pp->cmd);
+	if ((len = pp->len) > MAX_PAYLOAD_SIZE)
+		len = MAX_PAYLOAD_SIZE;
+	for (i = 0; i < len; i++) {
+		if (i > 0)
+			putchar(',');
+		printf("%d", pp->data[i]);
+	}
+	putchar('\n');
+}
