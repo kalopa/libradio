@@ -49,7 +49,7 @@ CFLAGS+=	-I../lib
 
 kprog:	$(FIRMWARE)
 	sudo kprog -v -d $(SERIAL_DEVICE) $(FIRMWARE)
-	touch kprog
+	rm $(FIRMWARE)
 
 tags:
 	ctags *.[ch] ../lib/*.[ch]

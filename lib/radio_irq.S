@@ -51,8 +51,7 @@ radio_irq:
 	lds		r24,_irq_fired
 	inc		r24
 	sts		_irq_fired,r24
-;	ldi		r24,0
-;	out		_SFR_IO_ADDR(EIMSK),r24		; Disable it too (for now)
+	cbi		_SFR_IO_ADDR(EIMSK),0		; Disable the interrupt too (for now)
 ;
 	pop		r25					; Restore the status register
 	pop		r24

@@ -193,8 +193,7 @@ libradio_send(struct channel *chp, uchar_t channo)
 uchar_t
 libradio_check_rx()
 {
-	libradio_request_device_status();
-	return(radio.rx_fifo >= SI4463_PACKET_LEN);
+	return(libradio_get_fifo_info(0) >= SI4463_PACKET_LEN);
 }
 
 /*
@@ -203,6 +202,6 @@ libradio_check_rx()
 uchar_t
 libradio_check_tx()
 {
-	libradio_request_device_status();
+	libradio_get_fifo_info(0);
 	return(radio.tx_fifo >= SI4463_PACKET_LEN);
 }

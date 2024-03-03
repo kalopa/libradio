@@ -150,6 +150,10 @@ struct channel	{
 #define LIBRADIO_CHSTATE_RXRESPONSE3	8
 #define LIBRADIO_CHSTATE_RXRESPONSE4	9
 
+#define LIBRADIO_WAIT_RXINT				01
+#define LIBRADIO_WAIT_SERIAL			02
+#define LIBRADIO_WAIT_TIMER				04
+
 extern	volatile uchar_t	main_thread;
 
 /*

@@ -51,10 +51,11 @@ void
 libradio_rxloop()
 {
 	/*
-	 * First things first - wait for the clock timer to kick us into doing
-	 * something. The sleep() function will pause the CPU until the next IRQ.
+	 * First things first - wait for the clock timer to kick us
+	 * into doing something. The funcion returns on an RX IRQ,
+	 * an SIO IRQ or a timeout.
 	 */
-	if (libradio_wait()) {
+	if (libradio_wait() & LIBRADIO_WAIT_RXINT) {
 		libradio_set_delay(5);
 		libradio_handle_packet();
 		libradio_get_int_status();

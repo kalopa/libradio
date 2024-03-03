@@ -51,15 +51,26 @@ uchar_t		_irq_fired = 0;
  * Wait for the timer to tick, an interrupt from the radio, or some serial
  * I/O. The intent here is to slow down the processor and to reduce the
  * amount of power consumed. We put the processor to sleep, while we wait.
+ * Returns a bitmask of reasons why it stopped waiting.
  */
 uchar_t
 libradio_wait()
 {
-	while (!_irq_fired && !libradio_tick_wait() && sio_iqueue_empty()) {
+	uchar_t status = 0;
+
+	while (status == 0) {
 		_watchdog();
+		if (_irq_fired)
+			status |= LIBRADIO_WAIT_RXINT;
+		if (libradio_tick_wait())
+			status |= LIBRADIO_WAIT_TIMER;
+		if (!sio_iqueue_empty())
+			status |= LIBRADIO_WAIT_SERIAL;
+		if (status)
+			break;
 		_sleep();
 	}
-	return(_irq_fired);
+	return(status);
 }
 
 /*
@@ -73,12 +84,21 @@ libradio_wait()
 void
 libradio_irq_enable(uchar_t flag)
 {
-	_irq_fired = 0;
-	EICRA = 02;
-	if ((radio.catch_irq = flag) == 0)
-		EIMSK = 0;
-	else
-		EIMSK = 01;
+	EICRA &= ~03;
+	EICRA |= 02;
+	if ((radio.catch_irq = flag) == 0) {
+		/*
+		 * Disable INT0
+		 */
+		EIMSK &= ~01;
+		_irq_fired = 0;
+	} else {
+		/*
+		 * Enable INT0
+		 */
+		_irq_fired = 0;
+		EIMSK |= 01;
+	}
 }
 
 /*
