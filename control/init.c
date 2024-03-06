@@ -68,9 +68,9 @@ serial_init()
 {
 	/*
 	 * Set the baud rate and configure the USART. Our chosen baud rate is
-	 * 38.4kbaud (with a 16MHz crystal).
+	 * 9600 baud (with a 16MHz crystal).
 	 */
-	UBRR0 = 25;
+	UBRR0 = 103;
 	UCSR0B = (1<<RXCIE0)|(1<<RXEN0)|(1<<TXEN0);
 	UCSR0C = (1<<UCSZ01)|(1<<UCSZ00);
 	//sio_set_direct_mode(1);
