@@ -43,49 +43,32 @@
 
 #define MAX_COUNT		1000
 
-uchar_t		spi_state;
-uchar_t		spi_index;
-uchar_t		spi_send_len;
-uchar_t		spi_recv_len;
-uchar_t		spi_data[MAX_SPI_BLOCK];
+uchar_t		pkt_state;
+uchar_t		pkt_index;
+uchar_t		pkt_send_len;
+uchar_t		pkt_recv_len;
+uchar_t		pkt_data[MAX_SPI_BLOCK];
 
 /*
  * Initialize the SPI circuit in the Atmel chip. We are running at a speed
  * of 1MHz with interrupts enabled.
  */
 void
-spi_init()
+pkt_init()
 {
-	spi_index = spi_send_len = spi_recv_len = 0;
-	SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR0);
+	pkt_index = pkt_send_len = pkt_recv_len = 0;
+	spi_init();
 }
 
 /*
- * Send and receive a byte over the SPI bus. Only wait about 20ms for the
- * return (64,000 x 5 instructions at 16MHz).
- */
-int
-spi_byte(uchar_t byte)
-{
-	unsigned int i;
-
-	SPDR = byte;
-	for (i = 0; i < 64000 && (SPSR & (1<<SPIF)) == 0; i++)
-		;
-	if (i == 64000)
-		return(-1);
-	return(SPDR & 0xff);
-}
-
-/*
- * Send a sequence (send_len) of bytes to the the radio (in the spi_data[]
+ * Send a sequence (send_len) of bytes to the the radio (in the pkt_data[]
  * buffer) and retrieve a sequence (recv_len) of bytes in response. This
  * can be used to write data (for example to the FIFO), to exchange data
  * (such as sending a command), and to read data (for example, reading
  * from the RX FIFO). For every byte we send, we get one back.
  */
 uchar_t
-spi_send(uchar_t send_len, uchar_t recv_len)
+pkt_send(uchar_t send_len, uchar_t recv_len)
 {
 	int i, j, k;
 
@@ -94,7 +77,7 @@ spi_send(uchar_t send_len, uchar_t recv_len)
 	 */
 	_setss(1);
 	for (i = 0; i < send_len; i++) {
-		if (spi_byte(spi_data[i]) == -1) {
+		if (spi_byte(pkt_data[i]) == -1) {
 			_setss(0);
 			return(SPI_SEND_WRITE_FAIL);
 		}
@@ -119,7 +102,7 @@ spi_send(uchar_t send_len, uchar_t recv_len)
 					_setss(0);
 					return(SPI_SEND_READ_FAIL);
 				}
-				spi_data[j] = k;
+				pkt_data[j] = k;
 			}
 			_setss(0);
 			break;
@@ -138,7 +121,7 @@ spi_send(uchar_t send_len, uchar_t recv_len)
  * ticks (ms_ticks) during this function, so beware...
  */
 uchar_t
-spi_rxpacket(struct channel *chp)
+libradio_rxpacket(struct channel *chp)
 {
 	int i, len;
 	uchar_t *cp, csum;
@@ -186,7 +169,7 @@ spi_rxpacket(struct channel *chp)
  * disabled. Also, the packet checksum is computed at the same time.
  */
 uchar_t
-spi_txpacket(struct channel *chp)
+libradio_txpacket(struct channel *chp)
 {
 	int i, len;
 	uchar_t *cp, csum;
@@ -226,7 +209,7 @@ spi_txpacket(struct channel *chp)
  * Print an SPI error and return zero.
  */
 uchar_t
-spi_error(uchar_t i)
+pkt_error(uchar_t i)
 {
 	printf("spi error %d\n", i);
 	return(0);

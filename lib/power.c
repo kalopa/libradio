@@ -74,9 +74,9 @@ libradio_power_up()
 	printf("PowerUp!\n");
 	while ((len = pgm_read_byte(&radio_config[addr++])) != 0) {
 		for (i = 0; i < len; i++)
-			spi_data[i] = pgm_read_byte(&radio_config[addr++]);
-		if ((i = spi_send(len, 0)) != SPI_SEND_OK) {
-			spi_error(i);
+			pkt_data[i] = pgm_read_byte(&radio_config[addr++]);
+		if ((i = pkt_send(len, 0)) != SPI_SEND_OK) {
+			pkt_error(i);
 			libradio_set_state(LIBRADIO_STATE_ERROR);
 			return(-1);
 		}

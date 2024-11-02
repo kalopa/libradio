@@ -35,9 +35,10 @@
 # Top-level Makefile. Just go down through the subdirectories and build
 # the binaries. Nothing much to see, here. Move along, please!
 #
-DIRS=	lib control monitor examples
+DIRS=	lib control lrmon monitor examples
 SRCS=	libradio.h lib/internal.h lib/*.[Sc] \
 	control/*.[hc] \
+	lrmon/*.[hc] \
 	monitor/monitor.c \
 	examples/oiltank.c
 

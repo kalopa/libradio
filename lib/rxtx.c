@@ -79,7 +79,7 @@ libradio_recv(struct channel *chp, uchar_t channo)
 		/*
 		 * There's at least a packet. Go get it!
 		 */
-		if ((ret = spi_rxpacket(chp)) == 0) {
+		if ((ret = libradio_rxpacket(chp)) == 0) {
 			/*
 			 * Got a defective packet - clear the RX FIFO
 			 * in case there's more. This is a particularly
@@ -119,16 +119,16 @@ libradio_set_rx(uchar_t channo)
 {
 	int i;
 
-	spi_data[0] = SI4463_START_RX;
-	spi_data[1] = channo;
-	spi_data[2] = 0;		/* CONDITION: Start immediately */
-	spi_data[3] = 0;		/* RXLen(hi) */
-	spi_data[4] = SI4463_PACKET_LEN;
-	spi_data[5] = SI4463_STATE_NOCHANGE;
-	spi_data[6] = SI4463_STATE_READY;
-	spi_data[7] = SI4463_STATE_READY;
-	if ((i = spi_send(8, 0)) != SPI_SEND_OK)
-		spi_error(i);
+	pkt_data[0] = SI4463_START_RX;
+	pkt_data[1] = channo;
+	pkt_data[2] = 0;		/* CONDITION: Start immediately */
+	pkt_data[3] = 0;		/* RXLen(hi) */
+	pkt_data[4] = SI4463_PACKET_LEN;
+	pkt_data[5] = SI4463_STATE_NOCHANGE;
+	pkt_data[6] = SI4463_STATE_READY;
+	pkt_data[7] = SI4463_STATE_READY;
+	if ((i = pkt_send(8, 0)) != SPI_SEND_OK)
+		pkt_error(i);
 	radio.curr_channel = channo;
 }
 
@@ -169,20 +169,20 @@ libradio_send(struct channel *chp, uchar_t channo)
 	 * the packet type indicates a response is required, then switch
 	 * to RX mode afterwards. Otherwise, drop back to READY.
 	 */
-	if (spi_txpacket(chp) == 0)
+	if (libradio_txpacket(chp) == 0)
 		return(0);
-	spi_data[0] = SI4463_START_TX;
-	spi_data[1] = channo;
+	pkt_data[0] = SI4463_START_TX;
+	pkt_data[1] = channo;
 	if (chp->state > LIBRADIO_CHSTATE_TRANSMIT)
 		i = SI4463_STATE_RX;
 	else
 		i = SI4463_STATE_READY;
-	spi_data[2] = (i << 4);
-	spi_data[3] = 0;
-	spi_data[4] = SI4463_PACKET_LEN;
-	i = spi_send(5, 0);
+	pkt_data[2] = (i << 4);
+	pkt_data[3] = 0;
+	pkt_data[4] = SI4463_PACKET_LEN;
+	i = pkt_send(5, 0);
 	if (i != SPI_SEND_OK)
-		return(spi_error(i));
+		return(pkt_error(i));
 	radio.npacket_tx++;
 	return(1);
 }

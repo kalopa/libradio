@@ -40,8 +40,9 @@ DEVICE=	atmega328p
 ASRCS=
 CSRCS=	monitor.c
 BIN=	monitor
+FIRMWARE=$(BIN).hex
 
-SERIAL_DEVICE?=/dev/ttyUSB2:38400
+SERIAL_DEVICE?=/dev/ttyUSB0:38400
 
 include ../avr.mk
 

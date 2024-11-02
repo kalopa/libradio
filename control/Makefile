@@ -39,9 +39,9 @@ DEVICE=	atmega328p
 ASRCS=
 CSRCS=	main.c init.c command.c enqueue.c transmit.c response.c input.c
 BIN=	radiocon
-FIRMWARE=radiocon.hex
+FIRMWARE=$(BIN).hex
 
-SERIAL_DEVICE?=/dev/ttyUSB0:38400
+SERIAL_DEVICE?=/dev/ttyUSB0:9600
 
 include ../avr.mk
 

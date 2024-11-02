@@ -54,13 +54,13 @@ libradio_request_device_status()
 {
 	int i;
 
-	spi_data[0] = SI4463_REQUEST_DEVICE_STATE;
-	if ((i = spi_send(1, 2)) != SPI_SEND_OK) {
-		spi_error(i);
+	pkt_data[0] = SI4463_REQUEST_DEVICE_STATE;
+	if ((i = pkt_send(1, 2)) != SPI_SEND_OK) {
+		pkt_error(i);
 		return(-1);
 	}
-	radio.curr_channel = spi_data[1];
-	return(radio.curr_state = spi_data[0]);
+	radio.curr_channel = pkt_data[1];
+	return(radio.curr_state = pkt_data[0]);
 }
 
 /*
@@ -74,16 +74,16 @@ libradio_get_property(uint_t start_prop, uchar_t nprops)
 	int i;
 
 	printf(">>> Get property: %x (%d)\n", start_prop, nprops);
-	spi_data[0] = SI4463_GET_PROPERTY;
-	spi_data[1] = start_prop >> 8;
-	spi_data[2] = nprops;
-	spi_data[3] = start_prop & 0xff;
-	if ((i = spi_send(4, nprops + 2)) != SPI_SEND_OK) {
-		spi_error(i);
+	pkt_data[0] = SI4463_GET_PROPERTY;
+	pkt_data[1] = start_prop >> 8;
+	pkt_data[2] = nprops;
+	pkt_data[3] = start_prop & 0xff;
+	if ((i = pkt_send(4, nprops + 2)) != SPI_SEND_OK) {
+		pkt_error(i);
 		return;
 	}
 	for (i = 0; i < nprops + 2; i++)
-		printf("PROP-%04x = %x\n", start_prop + i, spi_data[i]);
+		printf("PROP-%04x = %x\n", start_prop + i, pkt_data[i]);
 }
 
 /*
@@ -104,15 +104,15 @@ libradio_set_property()
 void
 libradio_get_part_info()
 {
-	spi_data[0] = SI4463_PART_INFO;
-	if (spi_send(1, 8) != SPI_SEND_OK)
+	pkt_data[0] = SI4463_PART_INFO;
+	if (pkt_send(1, 8) != SPI_SEND_OK)
 		return;
-	radio.chip_rev = spi_data[0];
-	radio.part_id = (spi_data[1] << 8) | spi_data[2];
-	radio.pbuild = spi_data[3];
-	radio.device_id = (spi_data[4] << 8) | spi_data[5];
-	radio.customer = spi_data[6];
-	radio.rom_id = spi_data[7];
+	radio.chip_rev = pkt_data[0];
+	radio.part_id = (pkt_data[1] << 8) | pkt_data[2];
+	radio.pbuild = pkt_data[3];
+	radio.device_id = (pkt_data[4] << 8) | pkt_data[5];
+	radio.customer = pkt_data[6];
+	radio.rom_id = pkt_data[7];
 }
 
 /*
@@ -123,14 +123,14 @@ libradio_get_part_info()
 void
 libradio_get_func_info()
 {
-	spi_data[0] = SI4463_FUNC_INFO;
-	if (spi_send(1, 6) != SPI_SEND_OK)
+	pkt_data[0] = SI4463_FUNC_INFO;
+	if (pkt_send(1, 6) != SPI_SEND_OK)
 		return;
-	radio.rev_ext = spi_data[0];
-	radio.rev_branch = spi_data[1];
-	radio.rev_int = spi_data[2];
-	radio.patch = (spi_data[3] << 8) | spi_data[4];
-	radio.func = spi_data[5];
+	radio.rev_ext = pkt_data[0];
+	radio.rev_branch = pkt_data[1];
+	radio.rev_int = pkt_data[2];
+	radio.patch = (pkt_data[3] << 8) | pkt_data[4];
+	radio.func = pkt_data[5];
 }
 
 /*
@@ -140,10 +140,10 @@ libradio_get_func_info()
 int
 libradio_get_packet_info()
 {
-	spi_data[0] = SI4463_PACKET_INFO;
-	if (spi_send(1, 2) != SPI_SEND_OK)
+	pkt_data[0] = SI4463_PACKET_INFO;
+	if (pkt_send(1, 2) != SPI_SEND_OK)
 		return(-1);
-	return((spi_data[0] << 8) | spi_data[1]);
+	return((pkt_data[0] << 8) | pkt_data[1]);
 }
 
 /*
@@ -171,12 +171,12 @@ libradio_protocol_cfg()
 void
 libradio_get_ph_status()
 {
-	spi_data[0] = SI4463_GET_PH_STATUS;
-	spi_data[1] = 0xff;
-	if (spi_send(2, 2) != SPI_SEND_OK)
+	pkt_data[0] = SI4463_GET_PH_STATUS;
+	pkt_data[1] = 0xff;
+	if (pkt_send(2, 2) != SPI_SEND_OK)
 		return;
-	radio.ph_pending = spi_data[0];
-	radio.ph_status = spi_data[1];
+	radio.ph_pending = pkt_data[0];
+	radio.ph_status = pkt_data[1];
 }
 
 /*
@@ -186,15 +186,15 @@ libradio_get_ph_status()
 void
 libradio_get_modem_status()
 {
-	spi_data[0] = SI4463_GET_MODEM_STATUS;
-	if (spi_send(1, 6) != SPI_SEND_OK)
+	pkt_data[0] = SI4463_GET_MODEM_STATUS;
+	if (pkt_send(1, 6) != SPI_SEND_OK)
 		return;
-	radio.modem_pending = spi_data[0];
-	radio.modem_status = spi_data[1];
-	radio.current_rssi = spi_data[2];
-	radio.latch_rssi = spi_data[3];
-	radio.ant1_rssi = spi_data[4];
-	radio.ant2_rssi = spi_data[5];
+	radio.modem_pending = pkt_data[0];
+	radio.modem_status = pkt_data[1];
+	radio.current_rssi = pkt_data[2];
+	radio.latch_rssi = pkt_data[3];
+	radio.ant1_rssi = pkt_data[4];
+	radio.ant2_rssi = pkt_data[5];
 }
 
 /*
@@ -204,13 +204,13 @@ libradio_get_modem_status()
 void
 libradio_get_chip_status()
 {
-	spi_data[0] = SI4463_GET_CHIP_STATUS;
-	spi_data[1] = 0x7f;
-	if (spi_send(2, 3) != SPI_SEND_OK)
+	pkt_data[0] = SI4463_GET_CHIP_STATUS;
+	pkt_data[1] = 0x7f;
+	if (pkt_send(2, 3) != SPI_SEND_OK)
 		return;
-	radio.chip_pending = spi_data[0];
-	radio.chip_status = spi_data[1];
-	radio.cmd_error = spi_data[2];
+	radio.chip_pending = pkt_data[0];
+	radio.chip_status = pkt_data[1];
+	radio.cmd_error = pkt_data[2];
 }
 
 /*
@@ -220,9 +220,9 @@ libradio_get_chip_status()
 void
 libradio_change_radio_state(uchar_t new_state)
 {
-	spi_data[0] = SI4463_CHANGE_STATE;
-	spi_data[1] = new_state & 0xf;
-	spi_send(2, 0);
+	pkt_data[0] = SI4463_CHANGE_STATE;
+	pkt_data[1] = new_state & 0xf;
+	pkt_send(2, 0);
 	radio.curr_state = new_state;
 }
 
@@ -234,12 +234,12 @@ libradio_change_radio_state(uchar_t new_state)
 uchar_t
 libradio_get_fifo_info(uchar_t clrf)
 {
-	spi_data[0] = SI4463_FIFO_INFO;
-	spi_data[1] = clrf;
-	if (spi_send(2, 2) != SPI_SEND_OK)
+	pkt_data[0] = SI4463_FIFO_INFO;
+	pkt_data[1] = clrf;
+	if (pkt_send(2, 2) != SPI_SEND_OK)
 		return(0);
-	radio.tx_fifo = spi_data[1];
-	return(radio.rx_fifo = spi_data[0]);
+	radio.tx_fifo = pkt_data[1];
+	return(radio.rx_fifo = pkt_data[0]);
 }
 
 /*
@@ -250,16 +250,16 @@ libradio_get_fifo_info(uchar_t clrf)
 void
 libradio_get_int_status()
 {
-	spi_data[0] = SI4463_GET_INT_STATUS;
-	spi_data[1] = spi_data[2] = spi_data[3] = 0;
-	if (spi_send(4, 8) != SPI_SEND_OK)
+	pkt_data[0] = SI4463_GET_INT_STATUS;
+	pkt_data[1] = pkt_data[2] = pkt_data[3] = 0;
+	if (pkt_send(4, 8) != SPI_SEND_OK)
 		return;
-	radio.int_pending = spi_data[0];
-	radio.int_status = spi_data[1];
-	radio.ph_pending = spi_data[2];
-	radio.ph_status = spi_data[3];
-	radio.modem_pending = spi_data[4];
-	radio.modem_status = spi_data[5];
-	radio.chip_pending = spi_data[6];
-	radio.chip_status = spi_data[7];
+	radio.int_pending = pkt_data[0];
+	radio.int_status = pkt_data[1];
+	radio.ph_pending = pkt_data[2];
+	radio.ph_status = pkt_data[3];
+	radio.modem_pending = pkt_data[4];
+	radio.modem_status = pkt_data[5];
+	radio.chip_pending = pkt_data[6];
+	radio.chip_status = pkt_data[7];
 }

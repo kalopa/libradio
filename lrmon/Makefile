@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights
+# Copyright (c) 2024, Kalopa Robotics Limited.  All rights
 # reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,29 +32,20 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # ABSTRACT
-# This is the Makefile to build the firmware for the example oil tank
-# measurement device. The fuse definitions are here, but everything else
-# is in the include file.
 #
-DEVICE=	atmega328p
+CFLAGS=	-Wall -I.. -O -DDEBUG
 
-ASRCS=
-CSRCS=	oiltank.c
-BIN=	oiltank
-FIRMWARE=$(BIN).hex
+SRCS=	main.c state.c command.c response.c timer.c rmq.c serial.c
+OBJS=	$(SRCS:.c=.o)
 
-SERIAL_DEVICE?=/dev/ttyUSB0:38400
+all:	lrmond
 
-include ../avr.mk
+instal: lrmond
 
-kprog:	$(FIRMWARE)
-	sudo kprog -v -d $(SERIAL_DEVICE) $(FIRMWARE)
-	rm $(FIRMWARE)
+clean:
+	rm -f lrmond $(OBJS)
 
-tags:
-	ctags *.[ch] ../lib/*.[ch]
+lrmond:	$(OBJS)
+	$(CC) -o lrmond $(OBJS) -lrabbitmq
 
-$(BIN):	$(OBJS) $(LIBRADIO)
-		$(CC) -o $(BIN) $(LDFLAGS) $(OBJS) $(LIBS)
-
-$(OBJS): ../libradio.h
+$(OBJS): lrmon.h

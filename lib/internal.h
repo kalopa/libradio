@@ -86,7 +86,7 @@
 #define SI4463_STATE_RX				8
 
 /*
- * Return codes from spi_send()
+ * Return codes from pkt_send()
  */
 #define SPI_SEND_OK				0
 #define SPI_SEND_WRITE_FAIL		1
@@ -216,18 +216,17 @@ struct libradio {
 	uchar_t		ant2_rssi;
 };
 
-extern uchar_t			spi_data[MAX_SPI_BLOCK];
+extern uchar_t			pkt_data[MAX_SPI_BLOCK];
 extern struct libradio	radio;
 
 /*
  *
  */
-void	spi_init();
-int		spi_byte(uchar_t);
-uchar_t	spi_send(uchar_t, uchar_t);
-uchar_t	spi_rxpacket(struct channel *chp);
-uchar_t	spi_txpacket(struct channel *);
-uchar_t	spi_error(uchar_t);
+void	pkt_init();
+uchar_t	pkt_send(uchar_t, uchar_t);
+uchar_t	libradio_rxpacket(struct channel *chp);
+uchar_t	libradio_txpacket(struct channel *);
+uchar_t	pkt_error(uchar_t);
 void	libradio_set_song(uchar_t);
 void	libradio_command(struct packet *);
 void	libradio_send_response(uchar_t, uchar_t, uchar_t, uchar_t, uchar_t []);

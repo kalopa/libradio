@@ -33,6 +33,7 @@
 *.out
 *.hex
 libradiod
+lrmond
 control/radiocon
 examples/oiltank
 monitor/monitor
