@@ -252,3 +252,16 @@ These are:
 - C2A-GMR
 
 The modules I'm using for testing are marked 44631B.
+
+# Control Systems
+
+The radio network is controlled by two co-operating systems.
+At the low level is the master device (source is in *.../control*).
+Communicating with this is the local radio monitor (*lrmon*).
+The low-level code runs on an embedded board with radio and arranges
+the communication across the network.
+It is not particularly intelligent and mostly just accepts transmit
+requests from lrmon.
+The lrmon daemon (*lrmond*) listens on a RabbitMQ channel for requests,
+and communicates with the low-level radio controller to request status
+and to activate dormant devices.

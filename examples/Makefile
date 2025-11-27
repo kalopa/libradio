@@ -41,6 +41,7 @@ DEVICE=	atmega328p
 ASRCS=
 CSRCS=	oiltank.c
 BIN=	oiltank
+FIRMWARE=$(BIN).hex
 
 SERIAL_DEVICE?=/dev/ttyUSB0:38400
 
