@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
+# Copyright (c) 2020-25, Kalopa Robotics Limited.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -37,8 +37,8 @@
 DEVICE=	atmega328p
 
 ASRCS=
-CSRCS=	main.c init.c command.c enqueue.c transmit.c response.c input.c
-BIN=	radiocon
+CSRCS=	main.c init.c receive.c slot.c
+BIN=	teamlead
 FIRMWARE=$(BIN).hex
 
 SERIAL_DEVICE?=/dev/ttyUSB0:9600
@@ -57,4 +57,4 @@ tags:
 $(BIN):	$(OBJS) $(LIBRADIO)
 	$(CC) -o $(BIN) $(LDFLAGS) $(OBJS) $(LIBS)
 
-$(OBJS): ../libradio.h ../lib/internal.h control.h
+$(OBJS): ../libradio.h ../lib/internal.h teamlead.h

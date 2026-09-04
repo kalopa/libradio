@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-25, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,11 +33,7 @@
  * you need at least one radio controller. It is in charge of managing
  * all of the client devices. It communicates with a more intelligent
  * system via the serial port, and schedules radio transmissions on all
- * of its active channels at regular intervals. It uses the main library
- * for a lot of the low-level radio functions but the operational state
- * machine is quite different. For example, if it is in a COLD or WARM
- * sleep, it is the serial port which will re-activate the software,
- * not the radio interface.
+ * of its active channels at regular intervals.
  */
 #include <stdio.h>
 #include <avr/io.h>
@@ -46,32 +42,42 @@
 #include <libavr.h>
 
 #include "libradio.h"
-#include "internal.h"
-#include "control.h"
+#include "teamlead.h"
+
+struct packet	my_packets[9];
 
 /*
- * Deal with a status response from a client. We asked for a STATUS update or
- * EEPROM data and now the client has sent us what we wanted. Forward the
- * packet up via the RS232 line and go back to TX mode.
+ * Time for a slot transmission.
  */
 void
-txresponse(struct channel *chp)
+slot_event(int slotid)
 {
-	int i, len, from_chan = 0, from_node = 0;
-	struct packet *pp = &chp->packet;
+	struct packet *pp;
 
-	from_chan = libradio_get_my_channel();
-	from_node = chp->packet.node;
-	printf("RCV from %d on ch%d\n", from_node, from_chan);
-	if (libradio_recv(chp, from_chan) == 0)
-		return;
-	printf("<%c%d:%u:%d:", from_chan + 'A', from_node, pp->ticks, pp->cmd);
-	if ((len = pp->len) > MAX_PAYLOAD_SIZE)
-		len = MAX_PAYLOAD_SIZE;
-	for (i = 0; i < len; i++) {
-		if (i > 0)
-			putchar(',');
-		printf("%d", pp->data[i]);
+	switch (slotid) {
+	case LIBRADIO_SLOT_BEACON:
+		/*
+		 * Time to send a beacon packet.
+		 */
+		pp = &my_packets[0];
+		pp->rxchan = LIBRADIO_CHANNEL_BROADCAST;
+		pp->command = RADIO_CMD_BEACON;
+		memcpy(pp->data, libradio_get_assignments(), MAX_PAYLOAD_SIZE);
+		libradio_transmit(pp);
+		break;
+
+	case LIBRADIO_SLOT_TIMESTAMP:
+		/*
+		 * Time to send a timestamp packet.
+		 */
+		pp = &my_packets[0];
+		pp->rxchan = LIBRADIO_CHANNEL_BROADCAST;
+		pp->command = RADIO_CMD_TIMESTAMP;
+		pp->data[0] = 0;
+		pp->data[1] = 0;
+		pp->data[2] = 0;
+		pp->data[3] = 0;
+		libradio_transmit(pp);
+		break;
 	}
-	putchar('\n');
 }

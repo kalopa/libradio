@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-25, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,33 +31,56 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * As the date and time as well as the state machine are intimately
- * intertwined with the real-time clock interrupts, the actual ISR is
- * part of this library rather than the application. It also manages to
- * flash the main LED with the appropriate indication of current state.
+ * The main library initialization code. The init call takes four bytes as
+ * arguments. These represent the "world"-unique identification numbers
+ * for the devices. They don't actually need to be globally unique,
+ * just unique to your environment. The first two bytes represent
+ * the category of device, whereas the last two represent the device
+ * number. Sort of like the ClassID and the InstanceID. Define a taxonomy
+ * for your environment, and assign the cat1 and cat2 bytes based on
+ * that schema. Then number each unique device within each category,
+ * so that no two devices ever have the same four-byte number.
  */
 #include <stdio.h>
 #include <avr/io.h>
+#include <avr/pgmspace.h>
+#include <string.h>
 
 #include <libavr.h>
 
 #include "libradio.h"
 #include "internal.h"
 
+uchar_t		_irq_fired;
+
 /*
- * Return the millisecond ticks.
+ * Look to see if there's anything to do. Don't block.
  */
-uint_t
-libradio_get_ticks()
+void
+libradio_poll()
 {
-	return(radio.ms_ticks);
+	static int last_millis = 0;
+
+	if (_slot_prev != 0xffff) {
+		printf("Slt%u/%u\n", _slot_prev, _slot_next);
+		_slot_next = 62500;
+		_slot_prev = 0xffff;
+	}
+	if ((radio.millis / 1000) != last_millis) {
+		last_millis = radio.millis / 1000;
+		printf("Poll: %u/%u\n", radio.hhmm, radio.millis);
+	}
+	if (_irq_fired) {
+		_irq_fired = 0;
+		//libradio_isr();
+	}
 }
 
 /*
- * Return the tens-of-minutes counter.
+ * Set the operational state.
  */
-uchar_t
-libradio_get_tom()
+void
+libradio_set_state(int newstate)
 {
-	return(radio.tens_of_minutes);
+	radio.state = newstate;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-24, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-25, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,67 +29,30 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * Handle a received packet.
+ * Initialize things (like the clock and the serial I/O).
  */
 #include <stdio.h>
 #include <avr/io.h>
+#include <string.h>
 
 #include <libavr.h>
 
 #include "libradio.h"
-#include "internal.h"
-
-struct channel	rxchan;
-struct channel	txchan;
+#include "teamlead.h"
 
 /*
- * Receive a packet from the radio, and call libradio_command() with
- * the received packet if the packet was intended for us.
+ * Initialize the serial port.
  */
 void
-libradio_handle_packet()
+serial_init()
 {
-	struct channel *chp = &rxchan;
-
 	/*
-	 * Look for a received packet.
+	 * Set the baud rate and configure the USART. Our chosen baud rate is
+	 * 9600 baud (with a 16MHz crystal).
 	 */
-	if (libradio_recv(chp, radio.my_channel)) {
-		if (chp->packet.node == 0 || chp->packet.node == radio.my_node_id)
-			libradio_command(&chp->packet);
-	}
-}
-
-/*
- * Send a response packet to the remote channel/address. Used whenever
- * we receive a request for information such as a STATUS request or an
- * EEPROM read request.
- */
-void
-libradio_send_response(uchar_t cmd, uchar_t chan, uchar_t addr, uchar_t len, uchar_t buffer[])
-{
-	int i;
-	struct channel *chp = &txchan;
-
-	chp->state = LIBRADIO_CHSTATE_TRANSMIT;
-	chp->priority = 10;
-	chp->packet.node = addr;
-	chp->packet.len = len;
-	chp->packet.cmd = cmd;
-	if (len > MAX_PAYLOAD_SIZE)
-		len = MAX_PAYLOAD_SIZE;
-	for (i = 0; i < len; i++)
-		chp->packet.data[i] = buffer[i];
-	if (libradio_send(chp, chan) != 0) {
-		chp->state = LIBRADIO_CHSTATE_EMPTY;
-		chp->priority = 0;
-	}
-	/*
-	 * Busy-wait for the transmission to end. Ideally we'd use the
-	 * state machine and not go listening for new RX packets until
-	 * this was done (or one clock tick).
-	 */
-	while (libradio_request_device_status() == SI4463_STATE_TX)
-		;
-	libradio_recv_start();
+	UBRR0 = 103;
+	UCSR0B = (1<<RXCIE0)|(1<<RXEN0)|(1<<TXEN0);
+	UCSR0C = (1<<UCSZ01)|(1<<UCSZ00);
+	//sio_set_direct_mode(1);
+	(void )fdevopen(sio_putc, sio_getc);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-25, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,11 +33,7 @@
  * you need at least one radio controller. It is in charge of managing
  * all of the client devices. It communicates with a more intelligent
  * system via the serial port, and schedules radio transmissions on all
- * of its active channels at regular intervals. It uses the main library
- * for a lot of the low-level radio functions but the operational state
- * machine is quite different. For example, if it is in a COLD or WARM
- * sleep, it is the serial port which will re-activate the software,
- * not the radio interface.
+ * of its active channels at regular intervals.
  */
 #include <stdio.h>
 #include <avr/io.h>
@@ -46,15 +42,10 @@
 #include <libavr.h>
 
 #include "libradio.h"
-#include "control.h"
+#include "teamlead.h"
 
 /*
- * Get the ball rolling on the main controller. Note that we start up in a
- * LISTEN state too, but it's mostly irrelevant. We don't really go into the
- * same low-power, suspended animation state of the clients. We'll be
- * checking for RS232 data pretty much always, even in a COLD sleep. The
- * assumption is that power consumption isn't an issue, and the upstream
- * comms client won't want to wait an hour until the device sees the message.
+ * Get the ball rolling on the main controller.
  */
 int
 main()
@@ -64,80 +55,35 @@ main()
 	 */
 	cli();
 	_setled(1);
-	clock_init();
 	serial_init();
 	sei();
 	printf("MCUSR%x\n", MCUSR);
 	MCUSR = 0;
 	printf("\nMain radio control system v%d.%d.\n",
 					FW_VERSION_H, FW_VERSION_L);
-	local_status(RADIO_STATUS_DYNAMIC);
-	local_status(RADIO_STATUS_STATIC);
 	/*
 	 * Initialize the radio circuitry. We don't really care about our category
-	 * and ID number because we will get activated over the 1:1 serial line.
-	 * The EEPROM data however will be used for channel ownership information.
+	 * and ID number but we have to pass them for completeness.
 	 */
 	libradio_init(CONTROL_C1, CONTROL_C2, CONTROL_N1, CONTROL_N2);
-	tx_init();
+	libradio_command_callback(rxdata);
+	libradio_slot_callback(slot_event);
+	libradio_teamlead();
+	//sio_set_direct_mode(1);
 	/*
 	 * Begin the main loop - every clock tick, call the radio loop.
 	 */
-	libradio_set_state(LIBRADIO_STATE_WARM);
 	while (1) {
 		/*
-		 * Wait for something to happen. Check if we're waiting for a
-		 * response. Then look to see if we have any data.
-		 * :FIXME: Really we should be using the RX IRQ to tell us
-		 * there's a packet.
+		 * Wait for something to happen. The bulk of the work is done in the
+		 * library code, and we provide callbacks for command handling and slot
+		 * transmission events.
 		 */
-		libradio_wait();
-		if (resp_chp != NULL) {
-			if (libradio_check_rx()) {
-				txresponse(resp_chp);
-				resp_chp->state = LIBRADIO_CHSTATE_EMPTY;
-				resp_chp = NULL;
-			} else {
-				/*
-				 * Only allow a few passes through here while waiting for a response.
-				 * After that, just give up.
-				 */
-				if (resp_chp->state == LIBRADIO_CHSTATE_RXRESPONSE4) {
-					printf("Response timeout!\n");
-					resp_chp->state = LIBRADIO_CHSTATE_EMPTY;
-					resp_chp = NULL;
-				} else
-					resp_chp->state++;
-			}
-		}
+		libradio_poll();
 		/*
 		 * Handle serial data from our upstream overlords.
 		 */
-		if (!sio_iqueue_empty())
-			process_input();
-		/*
-		 * Check whether we need to send anything.
-		 */
-		if (resp_chp == NULL)
-			tx_check_queues();
+		if (!sio_iqueue_empty());
+			//process_input();
 	}
-}
-
-/*
- * These are required callbacks but they don't do anything.
- *
- * Handle a non-default command.
- */
-void
-operate(struct packet *pp)
-{
-}
-
-/*
- * Fetch the status block and report it back.
- */
-int
-fetch_status(uchar_t status_type, uchar_t *cp, int maxlen)
-{
-	return(0);
 }

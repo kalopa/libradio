@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-25, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,6 +58,7 @@
 #define OILTANK_CAT1		0x7f				/* Monitoring device */
 #define OILTANK_CAT2		0x01				/* Tank level monitor */
 
+void	command(struct packet *);
 void	get_battery_voltage();
 void	get_oil_level();
 
@@ -115,9 +116,7 @@ main()
 	}
 	printf("IDENT %d/%d/%d/%d\n", OILTANK_CAT1, OILTANK_CAT2, mynum1, mynum2);
 	libradio_init(OILTANK_CAT1, OILTANK_CAT2, mynum1, mynum2);
-	libradio_set_clock(10, 160);
-	libradio_recv_start();
-	libradio_irq_enable(1);
+	libradio_command_callback(command);
 	/*
 	 * Begin the main loop - every clock tick, call the radio loop.
 	 */
@@ -129,7 +128,7 @@ main()
 		 * Call the libradio function to see if there's anything to do. This
 		 * routine only returns after a sleep or if the main clock has ticked.
 		 */
-		libradio_rxloop();
+		libradio_poll();
 		/*
 		 * Every five minutes, check the battery and the oil level.
 		 */
@@ -146,46 +145,31 @@ main()
  * whatever custom command was received. Useful for debugging, I suppose...
  */
 void
-operate(struct packet *pp)
+command(struct packet *pp)
 {
-	printf("Oil Tank OPERATE function.\n");
-	printf("Command: %d, len: %d\n", pp->cmd, pp->len);
-}
+	static struct packet response;
 
-/*
- * Report oiltank status back to the requested receiver.
- */
-int
-fetch_status(uchar_t status_type, uchar_t status[], int maxlen)
-{
-	if (maxlen < 7)
-		return(0);
-	status[0] = status_type;
-	switch (status_type) {
-	case RADIO_STATUS_STATIC:
+	switch (pp->command) {
+	case RADIO_CMD_DEVICE_STATUS:
 		/*
-		 * Status which doesn't really change.
+		 * Request for status information.
 		 */
-		status[1] = OILTANK_CAT1;
-		status[2] = OILTANK_CAT2;
-		status[3] = mynum1;
-		status[4] = mynum2;
-		status[5] = FW_VERSION_H;
-		status[6] = FW_VERSION_L;
-		return(7);
-
-	case RADIO_STATUS_DYNAMIC:
-		/*
-		 * Dynamic status.
-		 */
-		status[1] = libradio_get_state();
-		status[2] = (battery_voltage >> 8) & 0xff;
-		status[3] = (battery_voltage & 0xff);
-		status[4] = (oil_level >> 8) & 0xff;
-		status[5] = (oil_level & 0xff);
-		return(6);
+		printf("Status request received.\n");
+		response.rxchan = LIBRADIO_CHANNEL_TEAMLEAD;
+		response.command = RADIO_CMD_STATUS_RESPONSE;
+		response.data[0] = OILTANK_CAT1;
+		response.data[1] = OILTANK_CAT2;
+		response.data[2] = mynum1;
+		response.data[3] = mynum2;
+		response.data[4] = FW_VERSION_H;
+		response.data[5] = FW_VERSION_L;
+		response.data[6] = (battery_voltage >> 8) & 0xff;
+		response.data[7] = (battery_voltage & 0xff);
+		response.data[8] = (oil_level >> 8) & 0xff;
+		response.data[9] = (oil_level & 0xff);
+		libradio_transmit(&response);
+		break;
 	}
-	return(0);
 }
 
 /*

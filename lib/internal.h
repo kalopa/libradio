@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-25, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -156,68 +156,69 @@ struct libradio {
 	/*
 	 * Overall state and time.
 	 */
-	uchar_t		state;
-	uchar_t		tens_of_minutes;
-	uint_t		ms_ticks;
-	uchar_t		slow_period;
-	uchar_t		fast_period;
-	uchar_t		period;
-	uint_t		heart_beat;
-	uint_t		date;
-	uint_t		timeout;
-	uint_t		all_ticks;
-	uint_t		main_ticks;
-	uint_t		tick_count;
-	uchar_t		catch_irq;
+	uchar_t			state;
+	uchar_t			my_id;
+	uchar_t			cat1, cat2;
+	uchar_t			num1, num2;
+	uint_t			heart_beat;
+	uint_t			millis;
+	uint_t			hhmm;
 	/*
-	 * Node and channel identification.
+	 * Callbacks and packet queue.
 	 */
-	uchar_t		my_channel;
-	uchar_t		curr_channel;
-	uchar_t		my_node_id;
-	uchar_t		cat1, cat2;
-	uchar_t		num1, num2;
+	void			(*cmd_func)(struct packet *);
+	void			(*slot_func)(int);
+	struct packet	*txqueue;
 	/*
 	 * Radio settings.
 	 */
-	uchar_t		chip_rev;
-	uint_t		part_id;
-	uchar_t		pbuild;
-	uint_t		device_id;
-	uchar_t		customer;
-	uchar_t		rom_id;
-	uchar_t		rev_ext;
-	uchar_t		rev_branch;
-	uchar_t		rev_int;
-	uint_t		patch;
-	uchar_t		func;
+	uchar_t			chip_rev;
+	uint_t			part_id;
+	uchar_t			pbuild;
+	uint_t			device_id;
+	uchar_t			customer;
+	uchar_t			rom_id;
+	uchar_t			rev_ext;
+	uchar_t			rev_branch;
+	uchar_t			rev_int;
+	uint_t			patch;
+	uchar_t			func;
 	/*
 	 * Radio parameters.
 	 */
-	uint_t		npacket_rx;
-	uint_t		npacket_tx;
-	uchar_t		curr_state;
-	uchar_t		radio_active;
-	uchar_t		rx_fifo;
-	uchar_t		tx_fifo;
-	uchar_t		int_pending;
-	uchar_t		int_status;
-	uchar_t		ph_pending;
-	uchar_t		ph_status;
-	uchar_t		modem_pending;
-	uchar_t		modem_status;
-	uchar_t		chip_pending;
-	uchar_t		chip_status;
-	uchar_t		cmd_error;
-	uchar_t		saw_rx;
-	uchar_t		current_rssi;
-	uchar_t		latch_rssi;
-	uchar_t		ant1_rssi;
-	uchar_t		ant2_rssi;
+	uint_t			npacket_rx;
+	uint_t			npacket_tx;
+	uchar_t			curr_state;
+	uchar_t			radio_active;
+	uchar_t			rx_fifo;
+	uchar_t			tx_fifo;
+	uchar_t			int_pending;
+	uchar_t			int_status;
+	uchar_t			ph_pending;
+	uchar_t			ph_status;
+	uchar_t			modem_pending;
+	uchar_t			modem_status;
+	uchar_t			chip_pending;
+	uchar_t			chip_status;
+	uchar_t			cmd_error;
+	uchar_t			saw_rx;
+	uchar_t			current_rssi;
+	uchar_t			latch_rssi;
+	uchar_t			ant1_rssi;
+	uchar_t			ant2_rssi;
 };
 
-extern uchar_t			pkt_data[MAX_SPI_BLOCK];
 extern struct libradio	radio;
+extern uint_t		_slot_prev;
+extern uint_t		_slot_next;
+
+void			clock_init();
+void			slot_init();
+uint_t			libradio_get_prev_slot();
+void			libradio_set_next_slot(uint_t);
+
+#if 0
+extern uchar_t			pkt_data[MAX_SPI_BLOCK];
 
 /*
  *
@@ -232,3 +233,4 @@ void	libradio_command(struct packet *);
 void	libradio_send_response(uchar_t, uchar_t, uchar_t, uchar_t, uchar_t []);
 
 void	_setss(uchar_t);
+#endif

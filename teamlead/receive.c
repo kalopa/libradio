@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-25, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,36 +29,26 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * This is the main include file for the radio controller.
+ * This is the main radio controller. On any given radio network,
+ * you need at least one radio controller. It is in charge of managing
+ * all of the client devices. It communicates with a more intelligent
+ * system via the serial port, and schedules radio transmissions on all
+ * of its active channels at regular intervals.
  */
-#define CONTROL_C1		1
-#define CONTROL_C2		1
-#define CONTROL_N1		1
-#define CONTROL_N2		1
+#include <stdio.h>
+#include <avr/io.h>
+#include <string.h>
 
-#define FW_VERSION_H	3
-#define FW_VERSION_L	1
+#include <libavr.h>
 
-#define BATTERY_LOW		658
-#define BATTERY_OK		800
-
-#define MAX_RADIO_CHANNELS	6
-
-extern struct channel		channels[MAX_RADIO_CHANNELS];
-extern struct channel		*resp_chp;
+#include "libradio.h"
+#include "teamlead.h"
 
 /*
- * Prototypes.
+ * Received a packet. Send it "upstairs".
  */
-void	clock_init();
-void	serial_init();
-void	tx_init();
-void	tx_check_queues();
-void	process_input();
-uchar_t	mycommand(struct packet *);
-void	send_time(struct channel *);
-void	enqueue(struct channel *);
-void	txresponse(struct channel *);
-void	set_channel(uchar_t, uchar_t);
-void	local_status(uchar_t);
-void	reply(uchar_t);
+void
+rxdata(struct packet *pp)
+{
+	printf("RX CMD: %x (ch%d)\n", pp->command, pp->rxchan);
+}

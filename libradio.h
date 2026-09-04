@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-25, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,36 +36,46 @@
  */
 #define MAX_FIFO_SIZE		48
 #define MAX_PACKET_SIZE		16
-#define PACKET_HEADER_LEN	6
-#define MAX_PAYLOAD_SIZE	(MAX_PACKET_SIZE - PACKET_HEADER_LEN)
+#define MAX_PAYLOAD_SIZE	14
 
 /*
- * State machine used to manager radio operations. The states are
- * extensible. Just make sure the additional states start with
- * NLIBRADIO_STATES and go up from there. The states are documented in the
- * README file.
+ * State machine used to manage radio operations.
  */
-#define LIBRADIO_STATE_STARTUP		0
-#define LIBRADIO_STATE_ERROR		1
-#define LIBRADIO_STATE_LOW_BATTERY	2
-#define LIBRADIO_STATE_COLD			3
-#define LIBRADIO_STATE_WARM			4
-#define LIBRADIO_STATE_LISTEN		5
-#define LIBRADIO_STATE_ACTIVE		6
-#define NLIBRADIO_STATES			7
+#define LIBRADIO_STATE_ASLEEP		0
+#define LIBRADIO_STATE_AWAKE		1
+#define LIBRADIO_STATE_OFFLINE		2
+#define LIBRADIO_STATE_ONLINE		3
+#define LIBRADIO_STATE_TEAMLEAD		4
+#define LIBRADIO_NSTATES		5
 
-#define RADIO_CMD_NOOP				0
-#define RADIO_CMD_FIRMWARE			1
-#define RADIO_CMD_STATUS			2
-#define RADIO_CMD_ACTIVATE			3
-#define RADIO_CMD_DEACTIVATE		4
-#define RADIO_CMD_SET_TIME			5
-#define RADIO_CMD_SET_DATE			6
-#define RADIO_CMD_READ_EEPROM		7
-#define RADIO_CMD_WRITE_EEPROM		8
-#define RADIO_STATUS_RESPONSE		9
-#define RADIO_EEPROM_RESPONSE		10
+/*
+ * Default channel assignments
+ */
+#define LIBRADIO_CHANNEL_TEAMLEAD	0
+#define LIBRADIO_CHANNEL_BROADCAST	255
 
+/*
+ * Standard command set is the first 16 commands.
+ */
+#define RADIO_CMD_BEACON			0x00
+#define RADIO_CMD_TIMESTAMP			0x01
+#define RADIO_CMD_HELLO				0x02
+#define RADIO_CMD_REQUEST_ID		0x03
+#define RADIO_CMD_DEVICE_STATUS		0x04
+#define RADIO_CMD_STATUS_RESPONSE	0x05
+
+/*
+ * Reserved slots
+ */
+#define LIBRADIO_SLOT_BEACON		0
+#define LIBRADIO_SLOT_TIMESTAMP		25
+#define LIBRADIO_SLOT_NEWDEVICE1	48
+#define LIBRADIO_SLOT_NEWDEVICE2	49
+#define LIBRADIO_NO_SLOTS			50
+
+/*
+ * Additional application-specific commands.
+ */
 #define RADIO_CMD_ADDITIONAL_BASE	16
 
 #define RADIO_CMD_USER0			(RADIO_CMD_ADDITIONAL_BASE + 0)
@@ -85,13 +95,7 @@
 #define RADIO_CMD_USER14		(RADIO_CMD_ADDITIONAL_BASE + 14)
 #define RADIO_CMD_USER15		(RADIO_CMD_ADDITIONAL_BASE + 15)
 
-#define RADIO_STATUS_STATIC			0
-#define RADIO_STATUS_DYNAMIC		1
-#define RADIO_STATUS_USER0			2
-#define RADIO_STATUS_USER1			3
-#define RADIO_STATUS_USER2			4
-#define RADIO_STATUS_USER3			5
-
+/*
 #define RADIO_CTLERR_INVALID_CHANNEL	1
 #define RADIO_CTLERR_BUSY				2
 #define RADIO_CTLERR_TOO_MUCH_DATA		3
@@ -100,45 +104,9 @@
 #define RADIO_CTLERR_NOT_ACTIVE			6
 #define RADIO_CTLERR_POWER_FAIL			7
 #define RADIO_CTLERR_BAD_CMD			8
+*/
 
 /*
- * Packet to be transmitted. Multiple packets are folded up into one
- * fifo load (see the channel struct) and sent over the wire. Note
- * that the time stamp is encoded in front of the packet header and
- * not part of this struct. On receive, the time stamp is stripped
- * off first.
- *
- * We allow for a maximum of 10 bytes of actual payload data. This is
- * because the maximum packet size is 16 bytes, there are three "magic"
- * bytes sent during every transmission (myticks & cksum), and there
- * are three header bytes in the packet.
- */
-typedef unsigned short ushort;
-struct packet	{
-	ushort	ticks;		/* Time stamp for the packet */
-	uchar_t		node;		/* ID for receiver (0 is a broadcast) */
-	uchar_t		cmd;		/* Command for the receiver */
-	uchar_t		len;		/* Length of the data payload */
-	uchar_t		csum;		/* Checksum for the overall packet */
-	uchar_t		data[MAX_PAYLOAD_SIZE];
-};
-
-/*
- * Normal receivers just have a single channel entry, but the transmitter can
- * have multiple. One for every transmitting frequency in use.
- */
-struct channel	{
-	uchar_t		state;
-	uchar_t		priority;
-	struct packet	packet;
-};
-
-/*
- * Channel states. DISABLED is obvious. READ means the channel is only used
- * by the transmit code as an RX channel. EMPTY means it doesn't have any
- * data. ADDING means that some code is currently receiving a packet for
- * transmission and TRANSMIT means it has at least one packet ready for TX.
- */
 #define LIBRADIO_CHSTATE_DISABLED		0
 #define LIBRADIO_CHSTATE_READ			1
 #define LIBRADIO_CHSTATE_EMPTY			2
@@ -155,58 +123,27 @@ struct channel	{
 #define LIBRADIO_WAIT_TIMER				04
 
 extern	volatile uchar_t	main_thread;
+*/
+
+/*
+ * Packet to be transmitted.
+ */
+struct packet	{
+	uchar_t		rxchan;					/* ID for receiver (0xFF is a broadcast) */
+	uchar_t		command;				/* Command for the receiver */
+	uchar_t		data[MAX_PAYLOAD_SIZE];
+};
 
 /*
  * Prototypes...
  */
-void	libradio_init(uchar_t, uchar_t, uchar_t, uchar_t);
-void	libradio_irq_enable(uchar_t);
-uchar_t	libradio_get_state();
-uchar_t	libradio_get_my_channel();
-void	libradio_set_state(uchar_t);
-void	libradio_set_clock(uchar_t, uchar_t);
-uint_t	libradio_get_delay();
-void	libradio_set_delay(uint_t);
-int		libradio_tick_wait();
-int		libradio_elapsed_second();
-uchar_t	libradio_recv_start();
-void	libradio_rxloop();
-void	libradio_command(struct packet *);
-uchar_t	libradio_wait();
-
-uchar_t	libradio_recv(struct channel *, uchar_t);
-uchar_t	libradio_send(struct channel *, uchar_t);
-int		libradio_power_up();
-void	libradio_power_down();
-uint_t	libradio_get_ticks();
-uchar_t	libradio_get_tom();
-
-void	libradio_set_rx(uchar_t);
-uchar_t	libradio_check_rx();
-uchar_t	libradio_check_tx();
-int		libradio_request_device_status();
-void	libradio_get_property(uint_t, uchar_t);
-void	libradio_set_property();
-void	libradio_get_part_info();
-void	libradio_get_func_info();
-int		libradio_get_packet_info();
-void	libradio_ircal();
-void	libradio_protocol_cfg();
-void	libradio_get_ph_status();
-void	libradio_get_modem_status();
-void	libradio_get_chip_status();
-void	libradio_change_radio_state(uchar_t);
-uchar_t	libradio_get_fifo_info(uchar_t);
-void	libradio_get_int_status();
-void	libradio_handle_packet();
-uchar_t	libradio_irq_fired();
-void	libradio_debug();
-
-/*
- * Callback functions. operate() is called when a packet is received which is
- * not a built-in type. clock_speed() is used to slow down the clock during
- * low power modes.
- */
-void	operate(struct packet *);
-int		fetch_status(uchar_t, uchar_t [], int);
-void	libradio_power_mode(uchar_t);
+void		libradio_init(uchar_t, uchar_t, uchar_t, uchar_t);
+void		libradio_command_callback(void (*)(struct packet *));
+void		libradio_slot_callback(void (*)(int));
+void		libradio_teamlead();
+void		libradio_poll();
+int			libradio_transmit(struct packet *);
+void		libradio_set_state(int);
+void		libradio_set_latency(int);
+void		libradio_set_window(int, int);
+uchar_t		*libradio_get_assignments();

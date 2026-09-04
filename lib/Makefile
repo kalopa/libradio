@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
+# Copyright (c) 2020-25, Kalopa Robotics Limited.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -39,17 +39,21 @@
 
 DEVICE=	atmega328p
 
-ASRCS=	locore.S ioinit.S radio_irq.S setled.S \
-	setss.S testpt.S watchdog.S
-CSRCS=	init.c loop.c state.c handle.c command.c \
-	rxtx.c packet.c power.c radio.c clock.c \
-	wait.c power_mode.c debug.c
+ASRCS=	locore.S ioinit.S setled.S setss.S \
+	testpt.S watchdog.S
+CSRCS=	init.c poll.c slot.c command.c xmit.c clock.c
+#CSRCS=	init.c loop.c state.c handle.c command.c \
+#	rxtx.c packet.c power.c radio.c clock.c \
+#	wait.c power_mode.c debug.c
 
 include ../avr.mk
 
 all:	$(LIBRADIO)
 
 install: $(LIBRADIO)
+
+foo.s:	foo.c
+	/usr/bin/avr-gcc -Wall -g -mmcu=atmega328p -I/home/dtynan/Dropbox/hardware/Atmel/libavr -I.. -s foo.c
 
 clean:
 	rm -f $(LIBRADIO) $(OBJS) *.lst tags errs

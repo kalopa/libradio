@@ -32,11 +32,8 @@
 # Executables
 *.out
 *.hex
-libradiod
-lrmond
-control/radiocon
+teamlead/teamlead
 examples/oiltank
-monitor/monitor
 
 #
 # Documentation

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-25, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,36 +31,76 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * This is a utility function which is often delegated to the calling
- * system. If the calling system doesn't define this function, it
- * is here as a default.
+ * The main library initialization code. The init call takes four bytes as
+ * arguments. These represent the "world"-unique identification numbers
+ * for the devices. They don't actually need to be globally unique,
+ * just unique to your environment. The first two bytes represent
+ * the category of device, whereas the last two represent the device
+ * number. Sort of like the ClassID and the InstanceID. Define a taxonomy
+ * for your environment, and assign the cat1 and cat2 bytes based on
+ * that schema. Then number each unique device within each category,
+ * so that no two devices ever have the same four-byte number.
  */
 #include <stdio.h>
 #include <avr/io.h>
+#include <avr/pgmspace.h>
+#include <string.h>
 
 #include <libavr.h>
 
 #include "libradio.h"
 #include "internal.h"
 
+uint_t		_slot_prev;
+uint_t		_slot_next;
+uchar_t		assignments[MAX_PAYLOAD_SIZE];
+
 /*
- * Set low or high power mode, accordingly.  Fast has CS1n = 3 (/64)
- * and slow has CS1n = 5 (/1024). This makes for a slowdown by a
- * factor of 16 on the regular clock. This is to reduce power
- * consumption.
+ * Initialize the slots
  */
 void
-libradio_power_mode(uchar_t hi_flag)
+slot_init()
 {
-	cli();
-	if (hi_flag) {
-		radio.period = radio.fast_period;
-		TCCR1B = (1<<WGM12)|(1<<CS11)|(1<<CS10);
-	} else {
-		radio.period = radio.slow_period;
-		TCCR1B = (1<<WGM12)|(1<<CS12)|(1<<CS10);
-	}
-	TCCR1C = 0;
-	TIMSK1 = (1<<OCIE1A);
-	sei();
+	int i;
+
+	for (i = 0; i < MAX_PAYLOAD_SIZE; i++)
+		assignments[i] = 0;
+	_slot_prev = 0xffff;
+	_slot_next = 62500;
+}
+
+/*
+ * Get the previous slot (0xffff if none)
+ */
+uint_t
+libradio_get_prev_slot()
+{
+	return(_slot_prev);
+}
+
+/*
+ * Set the next slot time
+ */
+void
+libradio_set_next_slot(uint_t next)
+{
+	_slot_next = next;
+}
+
+/*
+ * Register a slot callback.
+ */
+void
+libradio_slot_callback(void (*func)(int))
+{
+	radio.slot_func = func;
+}
+
+/*
+ * Return the assignments list.
+ */
+uchar_t	*
+libradio_get_assignments()
+{
+	return(assignments);
 }

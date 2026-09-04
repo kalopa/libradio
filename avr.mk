@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
+# Copyright (c) 2020-25, Kalopa Robotics Limited.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -37,13 +37,9 @@
 OS?=$(shell uname)
 
 ifeq (${OS}, Darwin)
-	BINDIR=/usr/local/bin
+	BINDIR=/opt/homebrew/bin
 else
-ifeq (${OS}, FreeBSD)
 	BINDIR=/usr/local/bin
-else
-	BINDIR=/usr/bin
-endif
 endif
 
 AVR?=../libavr

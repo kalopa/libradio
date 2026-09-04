@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights reserved.
+ * Copyright (c) 2020-25, Kalopa Robotics Limited.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -66,31 +66,23 @@ void
 libradio_init(uchar_t c1, uchar_t c2, uchar_t n1, uchar_t n2)
 {
 	memset((void *)&radio, 0, sizeof(struct libradio));
-	libradio_set_state(LIBRADIO_STATE_STARTUP);
-	libradio_set_clock(1, 16);
-	radio.period = radio.fast_period;
-	radio.tens_of_minutes = 0xff;
-	radio.main_ticks = radio.tick_count = 5;
-	radio.curr_state = SI4463_STATE_SLEEP;
+	libradio_set_state(LIBRADIO_STATE_AWAKE);
 	radio.cat1 = c1;
 	radio.cat2 = c2;
 	radio.num1 = n1;
 	radio.num2 = n2;
-	pkt_init();
-	libradio_get_fifo_info(03);
+	slot_init();
+	clock_init();
+	//pkt_init();
+	//libradio_get_fifo_info(03);
 }
 
 /*
- * Set the fast and slow clock parameters. Each argument defines the
- * number of 10 millisecond ticks per clock interrupt in each fast or
- * slow mode. The default is a 10ms clock (fast == 1) in fast mode and
- * a 160ms clock in slow mode (slow == 16).
- *
- * For reference, 'ms_ticks += period' on each clock interrupt.
+ * We are going to be the team lead. Set our state accordingly.
  */
 void
-libradio_set_clock(uchar_t fast, uchar_t slow)
+libradio_teamlead()
 {
-	radio.fast_period = radio.period = fast;
-	radio.slow_period = slow;
+	libradio_set_state(LIBRADIO_STATE_TEAMLEAD);
+	radio.my_id = 0;
 }

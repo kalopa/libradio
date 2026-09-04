@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020-24, Kalopa Robotics Limited.  All rights
+# Copyright (c) 2020-25, Kalopa Robotics Limited.  All rights
 # reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,12 +35,12 @@
 # Top-level Makefile. Just go down through the subdirectories and build
 # the binaries. Nothing much to see, here. Move along, please!
 #
-DIRS=	lib control lrmon monitor examples
+# examples is omitted for now: oiltank.c still calls libradio_elapsed_second(),
+# which was dropped from lib/clock.c during the API refactor. Re-add it to
+# DIRS/SRCS once oiltank.c is ported to the new API.
+DIRS=	lib teamlead
 SRCS=	libradio.h lib/internal.h lib/*.[Sc] \
-	control/*.[hc] \
-	lrmon/*.[hc] \
-	monitor/monitor.c \
-	examples/oiltank.c
+	teamlead/*.[hc]
 
 all:
 	@for d in $(DIRS); do $(MAKE) -C $$d all; done
