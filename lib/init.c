@@ -66,15 +66,16 @@ void
 libradio_init(uchar_t c1, uchar_t c2, uchar_t n1, uchar_t n2)
 {
 	memset((void *)&radio, 0, sizeof(struct libradio));
-	libradio_set_state(LIBRADIO_STATE_AWAKE);
+	libradio_set_state(LIBRADIO_STATE_LISTENING);
 	radio.cat1 = c1;
 	radio.cat2 = c2;
 	radio.num1 = n1;
 	radio.num2 = n2;
 	slot_init();
 	clock_init();
-	//pkt_init();
-	//libradio_get_fifo_info(03);
+	pkt_init();
+	libradio_power_up();
+	libradio_set_rx();
 }
 
 /*

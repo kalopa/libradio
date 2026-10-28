@@ -35,12 +35,10 @@
 # Top-level Makefile. Just go down through the subdirectories and build
 # the binaries. Nothing much to see, here. Move along, please!
 #
-# examples is omitted for now: oiltank.c still calls libradio_elapsed_second(),
-# which was dropped from lib/clock.c during the API refactor. Re-add it to
-# DIRS/SRCS once oiltank.c is ported to the new API.
-DIRS=	lib teamlead
+DIRS=	lib teamlead examples
 SRCS=	libradio.h lib/internal.h lib/*.[Sc] \
-	teamlead/*.[hc]
+	teamlead/*.[hc] \
+	examples/oiltank.c
 
 all:
 	@for d in $(DIRS); do $(MAKE) -C $$d all; done

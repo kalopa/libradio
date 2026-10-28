@@ -38,6 +38,51 @@
  */
 #define MAX_SPI_BLOCK				20
 
+/*
+ * We are not channel-hopping: every node talks on a single, fixed RF
+ * frequency channel (a Si4463 concept). Don't confuse this with
+ * struct packet's rxchan field, which is the logical per-device address.
+ */
+#define RF_CHANNEL					0
+
+/*
+ * TDMA slot timing. Timer1 runs free (Normal mode) at 250kHz (16MHz/64),
+ * so one 20ms slot is 5000 ticks and 50 slots make up the 1-second
+ * superframe. The /64 prescaler gives us 4us resolution for the latency
+ * calibration below, and matches what the garden railway locomotive
+ * already runs Timer1 at, so its wheel-encoder input capture (ICP1, on
+ * this same counter) keeps the granularity it expects.
+ *
+ * Note the 16-bit counter wraps every 262ms at this rate. That's fine -
+ * slot boundaries are always computed as a *relative* advance from the
+ * last one, so the wraparound takes care of itself.
+ */
+#define SLOT_TICKS					5000
+#define SLOT_MS						20
+
+/*
+ * Timing-compensation tunables, in Timer1 ticks (4us each). Both need
+ * calibrating against the bench rig (master + client side by side, scope
+ * on both) - these are starting estimates, not measured values.
+ *
+ * LIBRADIO_RX_SYNC_OFFSET - ticks to set our local clock to (instead of
+ * zero) on receiving slot 0's beacon. By the time we've seen the beacon,
+ * real time has moved on, and the dominant term is simply how long the
+ * packet took to go out over the air: at 50kbps (see radio_config.h) a
+ * beacon is 8 preamble + 2 sync + 16 data + 2 CRC = 28 bytes = 224 bits,
+ * which is ~4.5ms of airtime. Add SPI readout of the FIFO (17 bytes at
+ * 400kHz, ~340us) and ISR/poll overhead, and ~5ms is the right ballpark.
+ * 5ms / 4us = 1250 ticks.
+ *
+ * LIBRADIO_TX_LEAD_TICKS - how many ticks *before* our assigned slot's
+ * boundary slot_func() fires, so the app has time to stage its packet via
+ * libradio_transmit() well ahead of the actual transmit trigger, rather
+ * than being asked for data at the last possible moment. 800 ticks is
+ * 3.2ms, comfortably more than the ~340us the FIFO load itself needs.
+ */
+#define LIBRADIO_RX_SYNC_OFFSET		1250
+#define LIBRADIO_TX_LEAD_TICKS		800
+
 #define SI4463_PACKET_LEN			16
 
 #define SI4463_NOP					0x00
@@ -100,28 +145,13 @@
  * the Si4463 radio are saved.
  *
  * state - The current state of the system: LIBRADIO_STATE_{x}
- * tens_of_minutes - Time of day in 10 minute increments (255 = off)
- * ms_ticks - Count of 10ms ticks
- * slow_period - Clock period (in 10ms) running slowly (usually 16)
- * fast_period - Clock period (in 10ms) running normally (usually 1)
- * period - No. of 10ms ticks per interrupt (see slow/fast)
+ * my_id - My NodeID. Zero means "unset"
+ * cat1, cat2 - Two category bytes (see README)
+ * num1, num2 - Two instance bytes (see README)
  * heart_beat - Timer used for the LED song
- * date - Current date (user-defined)
- * timeout - How long to go from WARM to COLD
- * all_ticks - No. of clock ticks since boot
- * main_ticks - When waiting for stuff to happen, set this to the number
- *   of clock ticks (at whatever clock frequency) to be the wakeup. Used
- *   by libradio_tick_wait() to figure out if the main_ticks clock has
- *  expired.
- * tick_count - This resets main_ticks to be this value, when main_ticks
- *   expires.
- * catch_irq - Should we listen for radio IRQs?
- *
- * my_channel - My channel number. Zero is the sleepy channel 
- * curr_channel - Current channel
- * my_node_id - My NodeID. Zero means "unset"
- * cat1, cat2 - Two category bytes (see README) 
- * num1,  num2 - Two instance bytes (see README)
+ * millis, hhmm - Milliseconds and minutes-since-midnight (see clock.c)
+ * curr_slot - Which of the LIBRADIO_NO_SLOTS TDMA slots we're in
+ * tx_pending - A packet is staged in the TX FIFO, awaiting its slot
  *
  * chip_rev - Si4463 chip revision
  * part_id - Si4463 part ID
@@ -163,6 +193,20 @@ struct libradio {
 	uint_t			heart_beat;
 	uint_t			millis;
 	uint_t			hhmm;
+	/*
+	 * TDMA slot tracking. curr_slot is the slot we're currently in
+	 * (0..LIBRADIO_NO_SLOTS-1). Which slot(s) "belong" to this node is
+	 * an application-level decision (see slot_func()'s slotid argument)
+	 * - the library just fires the callback once per slot and lets the
+	 * app decide what, if anything, to do with it.
+	 */
+	uchar_t			curr_slot;
+	/*
+	 * tx_pending - a packet has been staged into the TX FIFO (via
+	 * libradio_transmit()) and is waiting for the slot boundary to
+	 * actually fire SI4463_START_TX.
+	 */
+	uchar_t			tx_pending;
 	/*
 	 * Callbacks and packet queue.
 	 */
@@ -211,26 +255,78 @@ struct libradio {
 extern struct libradio	radio;
 extern uint_t		_slot_prev;
 extern uint_t		_slot_next;
+extern uint_t		_slot_boundary_tick;
+extern uchar_t		_irq_fired;
+extern uchar_t		pkt_data[MAX_SPI_BLOCK];
 
 void			clock_init();
+void			clocktimer();
 void			slot_init();
 uint_t			libradio_get_prev_slot();
 void			libradio_set_next_slot(uint_t);
-
-#if 0
-extern uchar_t			pkt_data[MAX_SPI_BLOCK];
+void			libradio_slot_advance();
+void			libradio_sync_clock();
 
 /*
- *
+ * Raw SI4463 command-transaction layer (lib/spi.c). Send/receive framing
+ * for the chip's command protocol - knows nothing about our packet format.
  */
 void	pkt_init();
 uchar_t	pkt_send(uchar_t, uchar_t);
-uchar_t	libradio_rxpacket(struct channel *chp);
-uchar_t	libradio_txpacket(struct channel *);
 uchar_t	pkt_error(uchar_t);
-void	libradio_set_song(uchar_t);
-void	libradio_command(struct packet *);
-void	libradio_send_response(uchar_t, uchar_t, uchar_t, uchar_t, uchar_t []);
+
+/*
+ * Chip status/property helpers (lib/radio.c).
+ */
+int		libradio_request_device_status();
+void	libradio_get_part_info();
+void	libradio_get_func_info();
+void	libradio_get_chip_status();
+void	libradio_get_int_status();
+uchar_t	libradio_get_fifo_info(uchar_t);
+void	libradio_ircal();
+void	libradio_change_radio_state(uchar_t);
+
+/*
+ * Power up/down the radio chip itself (lib/power.c).
+ */
+int		libradio_power_up();
+void	libradio_power_down();
+
+/*
+ * Packet TX/RX over the FIFO (lib/xmit.c, lib/recv.c). No checksum - the
+ * Si4463's own hardware CRC (see RF_PKT_CRC_CONFIG_7) validates packets.
+ */
+uchar_t	libradio_txpacket(struct packet *);
+void	libradio_fire_tx();
+uchar_t	libradio_rxpacket(struct packet *);
+void	libradio_set_rx();
+uchar_t	libradio_check_rx();
+
+/*
+ * Radio IRQ enable/disable (a landed packet raises PD2/INT0).
+ */
+void	libradio_irq_enable(uchar_t);
 
 void	_setss(uchar_t);
+void	_testpt(uchar_t);
+
+/*
+ * Scope instrumentation on the test point (PC5 - see testpt.S; it's a
+ * plain AVR pin, so nothing in radio_config.h needs touching). Set this
+ * to 0 to compile it out entirely.
+ *
+ * The transmitter raises it around the START_TX command, and the receiver
+ * raises it while pulling a packet out of the FIFO. With a probe on each
+ * board, the gap from the master's rising edge to the client's rising
+ * edge is exactly the latency LIBRADIO_RX_SYNC_OFFSET has to cancel out.
+ * The pulse widths are informative too: expect ~60us for the START_TX
+ * command and ~340us for the 17-byte FIFO readout at 400kHz.
+ */
+#define LIBRADIO_TESTPT				1
+
+#if LIBRADIO_TESTPT
+#define TESTPT(x)	_testpt(x)
+#else
+#define TESTPT(x)
 #endif

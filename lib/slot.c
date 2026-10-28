@@ -31,20 +31,16 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * The main library initialization code. The init call takes four bytes as
- * arguments. These represent the "world"-unique identification numbers
- * for the devices. They don't actually need to be globally unique,
- * just unique to your environment. The first two bytes represent
- * the category of device, whereas the last two represent the device
- * number. Sort of like the ClassID and the InstanceID. Define a taxonomy
- * for your environment, and assign the cat1 and cat2 bytes based on
- * that schema. Then number each unique device within each category,
- * so that no two devices ever have the same four-byte number.
+ * The TDMA slot scheduler. Timer1 (see clock_init() in clock.c and t1int
+ * in locore.S) fires a compare-match interrupt at each slot boundary; the
+ * ISR just latches TCNT1 into _slot_prev and reloads OCR1A from
+ * _slot_next. Everything else - stepping through the 50-slot superframe,
+ * and keeping the timer firing at a steady 20ms cadence - happens here in
+ * C, driven from poll.c.
  */
 #include <stdio.h>
 #include <avr/io.h>
 #include <avr/pgmspace.h>
-#include <string.h>
 
 #include <libavr.h>
 
@@ -53,6 +49,7 @@
 
 uint_t		_slot_prev;
 uint_t		_slot_next;
+uint_t		_slot_boundary_tick;
 uchar_t		assignments[MAX_PAYLOAD_SIZE];
 
 /*
@@ -65,8 +62,10 @@ slot_init()
 
 	for (i = 0; i < MAX_PAYLOAD_SIZE; i++)
 		assignments[i] = 0;
+	radio.curr_slot = 0;
 	_slot_prev = 0xffff;
-	_slot_next = 62500;
+	_slot_next = SLOT_TICKS;
+	_slot_boundary_tick = 0;
 }
 
 /*
@@ -103,4 +102,47 @@ uchar_t	*
 libradio_get_assignments()
 {
 	return(assignments);
+}
+
+/*
+ * A slot boundary has just fired (poll.c saw _slot_prev != 0xffff). Step
+ * to the next slot in the superframe, and keep Timer1 running at a steady
+ * SLOT_TICKS cadence by requesting the next compare match relative to
+ * where we actually just fired - not a fixed absolute value, which would
+ * only refire on a full 16-bit counter wraparound rather than every slot.
+ */
+void
+libradio_slot_advance()
+{
+	_slot_boundary_tick = _slot_prev;
+	libradio_set_next_slot(_slot_prev + SLOT_TICKS);
+	radio.curr_slot = (radio.curr_slot + 1) % LIBRADIO_NO_SLOTS;
+	_slot_prev = 0xffff;
+	/*
+	 * The 20ms slot tick is also our system heartbeat now that TIMER0
+	 * belongs to the application - update the clock and the LED song.
+	 */
+	clocktimer();
+}
+
+/*
+ * Re-align our local slot clock to the team lead's, on receipt of a
+ * BEACON. By the time we see it, real time has already moved on by
+ * however long it took the team lead to transmit it, the two radios'
+ * latency, and our own ISR overhead - so we don't set the clock to zero,
+ * we set it to LIBRADIO_RX_SYNC_OFFSET (calibrated on the bench).
+ */
+void
+libradio_sync_clock()
+{
+	cli();
+	TCNT1 = LIBRADIO_RX_SYNC_OFFSET;
+	OCR1A = LIBRADIO_RX_SYNC_OFFSET + SLOT_TICKS;
+	sei();
+	_slot_boundary_tick = LIBRADIO_RX_SYNC_OFFSET;
+	_slot_prev = 0xffff;
+	_slot_next = LIBRADIO_RX_SYNC_OFFSET + SLOT_TICKS;
+	radio.curr_slot = 0;
+	if (radio.state == LIBRADIO_STATE_LISTENING)
+		libradio_set_state(LIBRADIO_STATE_SYNCED);
 }

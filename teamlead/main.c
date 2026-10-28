@@ -81,9 +81,8 @@ main()
 		 */
 		libradio_poll();
 		/*
-		 * Handle serial data from our upstream overlords.
+		 * TODO: relay serial data from the upstream teamlink host
+		 * once that protocol exists (Milestone 2+).
 		 */
-		if (!sio_iqueue_empty());
-			//process_input();
 	}
 }

@@ -29,11 +29,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * This is the main radio controller. On any given radio network,
- * you need at least one radio controller. It is in charge of managing
- * all of the client devices. It communicates with a more intelligent
- * system via the serial port, and schedules radio transmissions on all
- * of its active channels at regular intervals.
+ * Called by libradio, once per slot, LIBRADIO_TX_LEAD_TICKS before that
+ * slot's boundary. For Milestone 1 the only slot we actually do anything
+ * with is the BEACON (0) - everything else (LEADER_CMD, ALOHA, and the
+ * 44 client-assignable slots) is reserved in the slot map but not yet
+ * handled; the radio just stays in RX for them. The beacon payload is a
+ * bare superframe counter for now - the full 14-role compressed
+ * assignment table is Milestone 2 work, once dynamic assignment exists.
  */
 #include <stdio.h>
 #include <avr/io.h>
@@ -44,40 +46,35 @@
 #include "libradio.h"
 #include "teamlead.h"
 
-struct packet	my_packets[9];
-
 /*
  * Time for a slot transmission.
  */
 void
 slot_event(int slotid)
 {
-	struct packet *pp;
+	static struct packet beacon;
+	static uint_t superframe = 0;
 
 	switch (slotid) {
 	case LIBRADIO_SLOT_BEACON:
 		/*
-		 * Time to send a beacon packet.
+		 * Time to send a beacon packet. For M1 this just carries a
+		 * superframe counter, so we can confirm on the client side
+		 * (and on the scope) that beacons are landing regularly.
 		 */
-		pp = &my_packets[0];
-		pp->rxchan = LIBRADIO_CHANNEL_BROADCAST;
-		pp->command = RADIO_CMD_BEACON;
-		memcpy(pp->data, libradio_get_assignments(), MAX_PAYLOAD_SIZE);
-		libradio_transmit(pp);
+		beacon.rxchan = LIBRADIO_CHANNEL_BROADCAST;
+		beacon.command = RADIO_CMD_BEACON;
+		beacon.data[0] = (superframe >> 8) & 0xff;
+		beacon.data[1] = superframe & 0xff;
+		superframe++;
+		libradio_transmit(&beacon);
 		break;
 
-	case LIBRADIO_SLOT_TIMESTAMP:
+	default:
 		/*
-		 * Time to send a timestamp packet.
+		 * LEADER_CMD, ALOHA, and client slots: nothing to do yet
+		 * (Milestone 2+). The radio just stays in RX.
 		 */
-		pp = &my_packets[0];
-		pp->rxchan = LIBRADIO_CHANNEL_BROADCAST;
-		pp->command = RADIO_CMD_TIMESTAMP;
-		pp->data[0] = 0;
-		pp->data[1] = 0;
-		pp->data[2] = 0;
-		pp->data[3] = 0;
-		libradio_transmit(pp);
 		break;
 	}
 }

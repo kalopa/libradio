@@ -41,10 +41,8 @@ DEVICE=	atmega328p
 
 ASRCS=	locore.S ioinit.S setled.S setss.S \
 	testpt.S watchdog.S
-CSRCS=	init.c poll.c slot.c command.c xmit.c clock.c
-#CSRCS=	init.c loop.c state.c handle.c command.c \
-#	rxtx.c packet.c power.c radio.c clock.c \
-#	wait.c power_mode.c debug.c
+CSRCS=	init.c poll.c slot.c command.c xmit.c recv.c clock.c \
+	spi.c power.c radio.c
 
 include ../avr.mk
 

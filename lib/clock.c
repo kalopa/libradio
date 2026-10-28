@@ -51,8 +51,12 @@
 #include "libradio.h"
 #include "internal.h"
 
+/*
+ * The LED "song" steps 16 times a second. We're called once per 20ms slot
+ * (50 times a second), so we step the song on a 16/50 rational count.
+ */
 #define LED_NUMERATOR	16
-#define LED_DENOMINATOR	125
+#define LED_DENOMINATOR	50
 
 /*
  * LED "songs" for the first six states.
@@ -79,46 +83,40 @@ clock_init()
 	hbit = hbclock = 0;
 	radio.millis = radio.hhmm = 0;
 	/*
-	 * Configure TIMER0 for the real-time clock.
-	 * Set Timer0 to CTC Mode (Mode 2) running at 125Hz
-	 * WGM02 = 0, WGM01 = 1, WGM00 = 0
-	 * OCR0A = 124
-	 * CS02=1, CS01=0, CS00=1 -> Prescaler 1024
-	 * Enable the Output Compare Match A Interrupt
-	 */
-	OCR0A = 124;
-	TCCR0A = (1 << WGM01);
-	TCCR0B = ((1 << CS02) | (1 << CS00));
-	TIMSK0 = (1 << OCIE0A);
-	/*
-	 * Configure TIMER1 for our packet transmissions.
-	 * WGM13:10 = 0 (Normal Mode)
-	 * CS12=1, CS11=0, CS10=0 -> Prescaler 256
-	 * Interrupt on Compare A Match
+	 * Configure TIMER1 as the TDMA slot clock.
+	 * WGM13:10 = 0 (Normal Mode - free-running, we advance OCR1A by
+	 * SLOT_TICKS ourselves at each boundary; see libradio_slot_advance())
+	 * CS11=1, CS10=1 -> Prescaler 64 (250kHz @ 16MHz, 4us resolution)
+	 * Interrupt on Compare A Match, every SLOT_TICKS (20ms)
+	 *
+	 * We deliberately leave TIMER0 and TIMER2 alone. TIMER0 in particular
+	 * must stay free for the application: the garden railway locomotive
+	 * drives its motor with hardware PWM on OC0A (PD6) and can't move to
+	 * another timer without rewiring the board. Everything we used to do
+	 * with TIMER0 (the real-time clock and the LED song) now hangs off
+	 * the 20ms slot tick instead - 50 slots is exactly one second, so the
+	 * seconds/minutes counters come out exact.
 	 */
 	TCCR1A = 0;
-	TCCR1B = (1 << CS12);
+	TCCR1B = ((1 << CS11) | (1 << CS10));
 	TCNT1 = 0;
-	OCR1A = 62500;		/* 1 second slots at 16MHz/256 */
+	OCR1A = SLOT_TICKS;
 	TIMSK1 = (1 << OCIE1A);
-	/*
-	 * Configure TIMER2 for the servo output.
-	 */
-	//ASSR &= ~(1 << AS2); 
 }
 
 /*
- * This is called every 8ms by the TIMER2 interrupt system. Just update
- * the time of day, blink the LED and any timers which might have expired.
+ * Called once per 20ms slot boundary (see libradio_slot_advance()). Just
+ * update the time of day and blink the LED.
  */
 void
 clocktimer()
 {
 	/*
 	 * millis counts the milliseconds and seconds whereas hhmm counts
-	 * the minutes since midnight.
+	 * the minutes since midnight. 50 slots is exactly one second, so
+	 * 3000 slots is exactly one minute - no rounding error to worry about.
 	 */
-	if ((radio.millis += 8) >= 60000) {
+	if ((radio.millis += SLOT_MS) >= 60000) {
 		radio.millis = 0;
 		if (++radio.hhmm > (24*60))
 			radio.hhmm = 0;
@@ -137,4 +135,27 @@ clocktimer()
 		_setled(ledf = (song & 0x8000) ? 1 : 0);
 		song = (song << 1) | ledf;
 	}
+}
+
+/*
+ * Return the current millisecond counter (0-59999, resets every minute -
+ * see clocktimer() above). Fine for short, sub-minute timing; for
+ * anything longer use libradio_hhmm() instead.
+ */
+uint_t
+libradio_millis()
+{
+	return(radio.millis);
+}
+
+/*
+ * Return the minutes-since-midnight counter (0-1439). Apps use this to
+ * time their own longer periodic work (e.g. "check the sensor every 5
+ * minutes") off the free-running clock, rather than libradio owning any
+ * notion of what the app should do and when.
+ */
+uint_t
+libradio_hhmm()
+{
+	return(radio.hhmm);
 }

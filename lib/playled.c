@@ -49,87 +49,24 @@
 #include <libavr.h>
 
 #include "libradio.h"
-#include "internal.h"
 
 /*
- * Radio debug function. Read a character from the serial port, and
- * perform some sort of radio function as a result. Useful for debugging
- * the state of the radio and/or the state of the communications layer.
+ * LED "songs" for the first six states.
+ */
+uint_t		songs[LIBRADIO_STATES] = {0, 0x00ff, 0x3333, 0xf7, 0xf7};
+
+/*
+ * This is called every 62ms by the TIMER2 interrupt system. Play the
+ * next bit in the song.
  */
 void
-libradio_debug()
+playled()
 {
-	char ch;
+	static uchar_t bit = 0;
 
-	if ((ch = getchar()) == '\n' || ch == '\r') {
-		putchar('\n');
-		return;
+	if (bit-- == 0) {
+		bit = 15;
+		song = radio.heart_beat;
 	}
-	printf("%d>", libradio_irq_fired());
-	switch (ch) {
-	case '0': case '1': case '2': case '3': case '4':
-	case '5': case '6': case '7': case '8': case '9':
-		ch -= '0';
-		printf("-> %d\n", ch);
-		radio.my_channel = ch;
-		break;
-	case 'r':
-		_bootstrap();
-		break;
-	case 'i':
-		libradio_irq_enable(1);
-		printf("IRQ-ena\n");
-		break;
-	case 'o':
-		libradio_irq_enable(0);
-		printf("IRQ-dis\n");
-		break;
-	case 'h':
-		libradio_handle_packet();
-		printf("handle packet\n");
-		break;
-	case 'p':
-		libradio_get_part_info();
-		printf("PART: %d/%d/%d/%d/%d/%d\n", radio.chip_rev, radio.part_id,
-						radio.pbuild, radio.device_id,
-						radio.customer, radio.rom_id);
-		break;
-	case 'f':
-		libradio_get_func_info();
-		printf("FUNC: %d/%d/%d/%d/%d\n", radio.rev_ext, radio.rev_branch,
-							radio.rev_int, radio.patch,
-							radio.func);
-		break;
-	case 'c':
-		libradio_get_chip_status();
-		printf("CHIP:%x/%x/%x\n", radio.chip_pending, radio.chip_status,
-						radio.cmd_error);
-		break;
-	case 'd':
-		libradio_request_device_status();
-		printf("DEVST:%d,CH%d\n", radio.curr_state, radio.curr_channel);
-		break;
-	case 's':
-		libradio_get_int_status();
-		printf("INTST:I%x/%x,P%x/%x,M%x/%x,C%x/%x\n",
-					radio.int_pending, radio.int_status,
-					radio.ph_pending, radio.ph_status,
-					radio.modem_pending, radio.modem_status,
-					radio.chip_pending, radio.chip_status);
-		break;
-	case 'G':
-		libradio_get_fifo_info(03);
-	case 'g':
-		libradio_get_fifo_info(0);
-		printf("FIFO RX:%d,TX:%d\n", radio.rx_fifo, radio.tx_fifo);
-		break;
-	case 'z':
-		libradio_ircal();
-		break;
-	case 'P':
-		libradio_get_property(0x100, 4);
-		break;
-	default:
-		putchar('\n');
-	}
+	_setled(ledf = (radio.heart_beat & 0x8000) ? 1 : 0);
 }

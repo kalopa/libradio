@@ -31,19 +31,22 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * ABSTRACT
- * The main library initialization code. The init call takes four bytes as
- * arguments. These represent the "world"-unique identification numbers
- * for the devices. They don't actually need to be globally unique,
- * just unique to your environment. The first two bytes represent
- * the category of device, whereas the last two represent the device
- * number. Sort of like the ClassID and the InstanceID. Define a taxonomy
- * for your environment, and assign the cat1 and cat2 bytes based on
- * that schema. Then number each unique device within each category,
- * so that no two devices ever have the same four-byte number.
+ * libradio_poll() is the non-blocking heart of the library - called
+ * repeatedly from the app's main loop, it never sleeps and never waits.
+ * Each call:
+ *
+ * 1. If a slot boundary just fired (Timer1 ISR, see locore.S), fires any
+ *    staged transmission immediately (the only truly time-critical SPI
+ *    command), then steps the scheduler to the next slot.
+ * 2. If the radio IRQ pin fired, a packet has landed - pull it out of the
+ *    FIFO and hand it to the app's command callback.
+ * 3. If we're within LIBRADIO_TX_LEAD_TICKS of the *next* slot boundary,
+ *    fire the app's slot callback once so it can stage a packet (via
+ *    libradio_transmit()) well ahead of time, rather than being asked for
+ *    data at the last possible moment.
  */
 #include <stdio.h>
 #include <avr/io.h>
-#include <avr/pgmspace.h>
 #include <string.h>
 
 #include <libavr.h>
@@ -51,7 +54,9 @@
 #include "libradio.h"
 #include "internal.h"
 
-uchar_t		_irq_fired;
+uchar_t		_irq_fired = 0;
+
+static uchar_t	lead_fired = 0;
 
 /*
  * Look to see if there's anything to do. Don't block.
@@ -59,20 +64,51 @@ uchar_t		_irq_fired;
 void
 libradio_poll()
 {
-	static int last_millis = 0;
+	uchar_t next_slot;
+	uint_t ticks_in_slot;
 
 	if (_slot_prev != 0xffff) {
-		printf("Slt%u/%u\n", _slot_prev, _slot_next);
-		_slot_next = 62500;
-		_slot_prev = 0xffff;
-	}
-	if ((radio.millis / 1000) != last_millis) {
-		last_millis = radio.millis / 1000;
-		printf("Poll: %u/%u\n", radio.hhmm, radio.millis);
+		libradio_fire_tx();
+		libradio_slot_advance();
+		lead_fired = 0;
 	}
 	if (_irq_fired) {
+		struct packet pkt;
+		uchar_t gotpkt;
+
 		_irq_fired = 0;
-		//libradio_isr();
+		/*
+		 * Raise the test point for exactly as long as it takes to get
+		 * the packet out of the FIFO - the rising edge is "packet in
+		 * hand", which is what we measure the beacon latency against.
+		 */
+		TESTPT(1);
+		gotpkt = libradio_check_rx() ? libradio_rxpacket(&pkt) : 0;
+		TESTPT(0);
+		if (gotpkt) {
+			if (pkt.command == RADIO_CMD_BEACON &&
+					radio.state != LIBRADIO_STATE_TEAMLEAD)
+				libradio_sync_clock();
+			if (radio.cmd_func)
+				radio.cmd_func(&pkt);
+		}
+		libradio_irq_enable(1);
+	}
+	/*
+	 * Don't fire slot callbacks (and risk an uncoordinated transmission)
+	 * until we're at least synced to the team lead's beacon - the team
+	 * lead itself is always "synced" to its own clock, by definition.
+	 */
+	if (!lead_fired && radio.slot_func != 0 &&
+			(radio.state == LIBRADIO_STATE_TEAMLEAD ||
+			 radio.state == LIBRADIO_STATE_SYNCED ||
+			 radio.state == LIBRADIO_STATE_ONLINE)) {
+		ticks_in_slot = (uint_t )(TCNT1 - _slot_boundary_tick);
+		if (ticks_in_slot >= SLOT_TICKS - LIBRADIO_TX_LEAD_TICKS) {
+			next_slot = (radio.curr_slot + 1) % LIBRADIO_NO_SLOTS;
+			radio.slot_func(next_slot);
+			lead_fired = 1;
+		}
 	}
 }
 
@@ -83,4 +119,23 @@ void
 libradio_set_state(int newstate)
 {
 	radio.state = newstate;
+}
+
+/*
+ * An IRQ from the radio hits PD2 (INT0). The falling edge causes an
+ * interrupt (see radio_irq in locore.S, which just latches _irq_fired and
+ * masks further interrupts until we re-enable them here).
+ */
+void
+libradio_irq_enable(uchar_t flag)
+{
+	EICRA &= ~03;
+	EICRA |= 02;
+	if (flag == 0) {
+		EIMSK &= ~01;
+		_irq_fired = 0;
+	} else {
+		_irq_fired = 0;
+		EIMSK |= 01;
+	}
 }

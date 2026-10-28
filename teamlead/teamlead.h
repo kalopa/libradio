@@ -46,17 +46,5 @@
  * Prototypes.
  */
 void	serial_init();
-/*
-void	tx_init();
-void	tx_check_queues();
-void	process_input();
-uchar_t	mycommand(struct packet *);
-void	send_time(struct channel *);
-void	enqueue(struct channel *);
-void	txresponse(struct channel *);
-void	set_channel(uchar_t, uchar_t);
-void	local_status(uchar_t);
-void	reply(uchar_t);
-*/
 void	rxdata(struct packet *);
 void	slot_event(int);

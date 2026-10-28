@@ -33,6 +33,21 @@
  * for the states, the valid (built-in) commands, and the packet &
  * channel structure definitions. It also includes prototypes for the
  * remaining functions.
+ *
+ * HARDWARE RESOURCES OWNED BY THIS LIBRARY
+ * Do not configure these in your application - libradio_init() sets them
+ * up and anything you set beforehand is clobbered:
+ *
+ *   TIMER1 - the 20ms TDMA slot clock (Compare Match A). Note that the
+ *            input capture unit is NOT used by us, so an application is
+ *            free to use ICP1 (e.g. a wheel encoder) on the same counter.
+ *   TIMER0 - the real-time clock and LED heartbeat "song".
+ *   INT0   - the radio's IRQ line (PD2).
+ *   SPI    - shared with the radio; see lib/spi.c.
+ *
+ * TIMER2 is left entirely to the application. Note that TIMER0's claim
+ * is awkward for any device needing hardware PWM on OC0A/OC0B (a motor
+ * controller, say) - see the notes in lib/clock.c.
  */
 #define MAX_FIFO_SIZE		48
 #define MAX_PACKET_SIZE		16
@@ -40,10 +55,18 @@
 
 /*
  * State machine used to manage radio operations.
+ *
+ * ASLEEP    - Not listening to the radio at all.
+ * LISTENING - Powered up, RX on, haven't heard a beacon yet.
+ * SYNCED    - Heard a beacon (clock aligned to the team lead) but have no
+ *             slot assignment yet.
+ * ONLINE    - Assigned a slot and actively communicating. Reserves the
+ *             0x00f7 heartbeat song - don't reuse it for any other state.
+ * TEAMLEAD  - This node *is* the team lead.
  */
 #define LIBRADIO_STATE_ASLEEP		0
-#define LIBRADIO_STATE_AWAKE		1
-#define LIBRADIO_STATE_OFFLINE		2
+#define LIBRADIO_STATE_LISTENING	1
+#define LIBRADIO_STATE_SYNCED		2
 #define LIBRADIO_STATE_ONLINE		3
 #define LIBRADIO_STATE_TEAMLEAD		4
 #define LIBRADIO_NSTATES		5
@@ -65,12 +88,20 @@
 #define RADIO_CMD_STATUS_RESPONSE	0x05
 
 /*
- * Reserved slots
+ * Slot map. One superframe is LIBRADIO_NO_SLOTS slots of 20ms each (1s
+ * total). Slot 0 is always the team lead's BEACON. Slots 12/24/36 are
+ * reserved for the team lead to relay LEADER_CMD traffic (commands/data
+ * from the upstream teamlink host) - time/date sync piggybacks on these
+ * rather than getting its own dedicated slot. Slots 48/49 (the last two)
+ * are ALOHA slots for unassigned devices to request a channel. Every
+ * other slot (44 of them) is assignable to a client device.
  */
 #define LIBRADIO_SLOT_BEACON		0
-#define LIBRADIO_SLOT_TIMESTAMP		25
-#define LIBRADIO_SLOT_NEWDEVICE1	48
-#define LIBRADIO_SLOT_NEWDEVICE2	49
+#define LIBRADIO_SLOT_LEADER_CMD1	12
+#define LIBRADIO_SLOT_LEADER_CMD2	24
+#define LIBRADIO_SLOT_LEADER_CMD3	36
+#define LIBRADIO_SLOT_ALOHA1		48
+#define LIBRADIO_SLOT_ALOHA2		49
 #define LIBRADIO_NO_SLOTS			50
 
 /*
@@ -96,36 +127,6 @@
 #define RADIO_CMD_USER15		(RADIO_CMD_ADDITIONAL_BASE + 15)
 
 /*
-#define RADIO_CTLERR_INVALID_CHANNEL	1
-#define RADIO_CTLERR_BUSY				2
-#define RADIO_CTLERR_TOO_MUCH_DATA		3
-#define RADIO_CTLERR_TOO_BIG			4
-#define RADIO_CTLERR_NEWLINE			5
-#define RADIO_CTLERR_NOT_ACTIVE			6
-#define RADIO_CTLERR_POWER_FAIL			7
-#define RADIO_CTLERR_BAD_CMD			8
-*/
-
-/*
-#define LIBRADIO_CHSTATE_DISABLED		0
-#define LIBRADIO_CHSTATE_READ			1
-#define LIBRADIO_CHSTATE_EMPTY			2
-#define LIBRADIO_CHSTATE_ADDING			3
-#define LIBRADIO_CHSTATE_TRANSMIT		4
-#define LIBRADIO_CHSTATE_TXRESPOND		5
-#define LIBRADIO_CHSTATE_RXRESPONSE1	6
-#define LIBRADIO_CHSTATE_RXRESPONSE2	7
-#define LIBRADIO_CHSTATE_RXRESPONSE3	8
-#define LIBRADIO_CHSTATE_RXRESPONSE4	9
-
-#define LIBRADIO_WAIT_RXINT				01
-#define LIBRADIO_WAIT_SERIAL			02
-#define LIBRADIO_WAIT_TIMER				04
-
-extern	volatile uchar_t	main_thread;
-*/
-
-/*
  * Packet to be transmitted.
  */
 struct packet	{
@@ -147,3 +148,5 @@ void		libradio_set_state(int);
 void		libradio_set_latency(int);
 void		libradio_set_window(int, int);
 uchar_t		*libradio_get_assignments();
+uint_t		libradio_millis();
+uint_t		libradio_hhmm();
